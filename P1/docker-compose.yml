@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  servicio-usuario:
+    build:
+      context: .
+      dockerfile: Dockerfile.usuario
+    ports:
+      - "5050:5050"
+    volumes:
+      # Montar la persistencia de datos local dentro del contenedor
+      - ./almacenamiento:/app/almacenamiento
+    environment:
+      # Leer el SECRET_UUID desde el archivo .env (o del entorno host)
+      - SECRET_UUID=${SECRET_UUID}
+
+  servicio-fichero:
+    build:
+      context: .
+      dockerfile: Dockerfile.fichero
+    ports:
+      - "5051:5051"
+    volumes:
+      # Montar el MISMO volumen para compartir la carpeta de ficheros y usuarios
+      - ./almacenamiento:/app/almacenamiento
+    environment:
+      # Leer el MISMO SECRET_UUID para que los tokens sean válidos en ambos
+      - SECRET_UUID=${SECRET_UUID}

@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependencias primero para aprovechar la caché de Docker
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar el código fuente
+COPY user.py .
+
+# Exponer el puerto
+EXPOSE 5050
+
+# Comando para ejecutar la aplicación
+CMD ["python", "user.py"]
