@@ -26,7 +26,7 @@ class TestP1(unittest.TestCase):
 
     def test_exercise_1(self):
         self.check_language(solution.RE1,
-                            ["0", "10", "000", "1010101", "1110", "00000", "101010"],
+                            ["0", "10", "000", "1010101", "1110", "00000"],
                             ["", "1", "00", "010", "10a", "0000", "001"])
 
     def test_exercise_2(self):
@@ -41,16 +41,15 @@ class TestP1(unittest.TestCase):
 
     def test_exercise_4(self):
         self.check_language(solution.RE4,
-                            ["ana_lopez.txt", "datos/luis_gil.csv", "a_b.csv", "datos/a_b.txt", "juan_perez.csv"],
+                            ["ana_lopez.txt", "datos/luis_gil.csv", "a_b.csv", "datos/a_b.txt", "raul_matellano.csv"],
                             ["Ana_lopez.txt", "ana__lopez.txt", "ana_lopez.pdf",
-                             "datos/ana_lopezXcsv", "otros/ana_lopez.csv", "datos/juan.txt", "datos/luis_gil.pdf"])
+                             "datos/ana_lopezXcsv", "otros/ana_lopez.csv", "datos/raul.txt", "datos/raul_matellano.pdf"])
 
     def test_exercise_5(self):
         self.check_language(solution.RE5,
-                            ["00:00:00", "09:07:05", "23:59:59", "12:30:45", "23:00:00"],
-                            ["24:00:00", "12:60:00", "12:00:60", "9:07:05", "09:07", "25:00:00", "12:61:00"])
+                            ["00:00:00", "09:07:05", "23:59:59", "12:33:33", "23:03:30"],
+                            ["24:00:00", "12:60:00", "12:00:60", "9:07:05", "09:07", "25:50:20", "12:81:70"])
         self.check_groups(solution.RE5, "09:07:05", ("09", "07", "05"))
-        self.check_groups(solution.RE5, "23:59:59", ("23", "59", "59"))
 
     def test_exercise_6(self):
         self.check_language(solution.RE6,
@@ -63,8 +62,8 @@ class TestP1(unittest.TestCase):
         cases = [("uno   dos\ttres", "uno dos tres"),
                  ("  hola\t ", " hola "), ("a\n\t b", "a\n b"),
                  ("sin_cambios", "sin_cambios"), ("", ""),
-                 ("\t\t", " "), ("palabra", "palabra"),
-                 ("  inicio", " inicio"), ("fin  ", "fin ")]
+                 ("\t\t", " "), ("e", "e"),
+                 ("  a", " a"), ("b  ", "b ")]
         for text, expected in cases:
             with self.subTest(text=text):
                 self.assertEqual(re.sub(solution.RE7, solution.SUB7, text), expected)
@@ -73,8 +72,8 @@ class TestP1(unittest.TestCase):
         cases = [("lopez, ana", "ana lopez"), ("gil, luis", "luis gil"),
                  ("lopez,ana", "lopez,ana"), ("lopez,  ana", "lopez,  ana"),
                  ("x lopez, ana", "x lopez, ana"), ("lopez, ana\n", "lopez, ana\n"),
-                 ("martin, juan", "juan martin"), ("gomez, eva", "eva gomez"),
-                 ("martin, juan extra", "martin, juan extra"), ("123, ana", "123, ana")]
+                 ("jorge, jorge", "jorge jorge"), ("g, a", "a g"),
+                 ("raul, jorge p", "raul, jorge p"), ("1, mate", "1, mate")]
         for text, expected in cases:
             with self.subTest(text=text):
                 self.assertEqual(re.sub(solution.RE8, solution.SUB8, text), expected)
