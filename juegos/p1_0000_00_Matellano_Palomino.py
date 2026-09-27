@@ -1,30 +1,61 @@
-import sys
-from game import Player
-from strategy import MinimaxAlphaBetaStrategy
-from search import heuristic2
+from game import TwoPlayerGameState
+from tournament import StudentHeuristic
 
-def get_player(max_depth: int = 3) -> Player:
-    """
-    Función obligatoria para el torneo. Devuelve una instancia de Player.
-    Autores: Raul Matellano, Jorge Palomino
-    """
-    
-    # Creamos la estrategia con nuestra Heurística 2 y Poda Alfa-Beta
-    strategy = MinimaxAlphaBetaStrategy(
-        heuristic=heuristic2,
-        max_depth_minimax=max_depth,
-        max_sec_per_evaluation=5, # El límite típico del torneo
-        verbose=0
-    )
-    
-    player = Player(
-        name="IA Matellano-Palomino (AB-H2)",
-        strategy=strategy,
-        delay=0
-    )
-    
-    return player
+class Solution1(StudentHeuristic):
+    def get_name(self) -> str:
+        return "DiferenciaFichas"
 
-if __name__ == "__main__":
-    player = get_player()
-    print("Jugador de torneo cargado con éxito:", player.name)
+    def evaluation_function(self, state: TwoPlayerGameState) -> float:
+        # Si el juego ha terminado, utilizamos el score real
+        if state.end_of_game:
+            score_diff = state.scores[0] - state.scores[1]
+            return float(score_diff if state.is_player_max(state.player1) else -score_diff)
+            
+        me = state.player_max.label
+        adversary = state.player1.label if me == state.player2.label else state.player2.label
+        
+        my_coins = sum(1 for c in state.board.values() if c == me)
+        adv_coins = sum(1 for c in state.board.values() if c == adversary)
+        return float(my_coins - adv_coins)
+
+class Solution2(StudentHeuristic):
+    def get_name(self) -> str:
+        return "ControlEsquinas"
+
+    def evaluation_function(self, state: TwoPlayerGameState) -> float:
+        if state.end_of_game:
+            score_diff = state.scores[0] - state.scores[1]
+            # Multiplicamos el score final por un valor alto para priorizar victorias
+            return float(score_diff * 1000 if state.is_player_max(state.player1) else -score_diff * 1000)
+            
+        me = state.player_max.label
+        adversary = state.player1.label if me == state.player2.label else state.player2.label
+        
+        corners = [(1, 1), (1, state.game.height), (state.game.width, 1), (state.game.width, state.game.height)]
+        my_corners = sum(1 for c in corners if state.board.get(c) == me)
+        adv_corners = sum(1 for c in corners if state.board.get(c) == adversary)
+        
+        # Las esquinas son la parte más valiosa de Reversi
+        return float(my_corners - adv_corners)
+
+class Solution3(StudentHeuristic):
+    def get_name(self) -> str:
+        return "EsquinasYFichas"
+
+    def evaluation_function(self, state: TwoPlayerGameState) -> float:
+        if state.end_of_game:
+            score_diff = state.scores[0] - state.scores[1]
+            return float(score_diff * 1000 if state.is_player_max(state.player1) else -score_diff * 1000)
+            
+        me = state.player_max.label
+        adversary = state.player1.label if me == state.player2.label else state.player2.label
+        
+        corners = [(1, 1), (1, state.game.height), (state.game.width, 1), (state.game.width, state.game.height)]
+        my_corners = sum(1 for c in corners if state.board.get(c) == me)
+        adv_corners = sum(1 for c in corners if state.board.get(c) == adversary)
+        
+        my_coins = sum(1 for c in state.board.values() if c == me)
+        adv_coins = sum(1 for c in state.board.values() if c == adversary)
+        
+        # Combinamos: gran peso a las esquinas, peso pequeño a las fichas
+        return float((my_corners - adv_corners) * 50 + (my_coins - adv_coins))
