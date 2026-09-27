@@ -6,6 +6,10 @@ class Solution1(StudentHeuristic):
         return "DiferenciaFichas"
 
     def evaluation_function(self, state: TwoPlayerGameState) -> float:
+        # Heurística Básica (Fichas): Su objetivo es simplemente tener más fichas que el rival.
+        # Es la heurística más intuitiva pero también la más miope, ya que en Reversi 
+        # tener muchas fichas al principio suele dejarte sin movimientos legales después.
+        
         # Si el juego ha terminado, utilizamos el score real
         if state.end_of_game:
             score_diff = state.scores[0] - state.scores[1]
@@ -23,9 +27,13 @@ class Solution2(StudentHeuristic):
         return "ControlEsquinas"
 
     def evaluation_function(self, state: TwoPlayerGameState) -> float:
+        # Heurística Intermedia (Esquinas): En Reversi, las esquinas (corners) son
+        # casillas seguras porque una vez capturadas, no pueden ser volteadas.
+        # Esta función evalúa quién tiene más esquinas dominadas.
         if state.end_of_game:
             score_diff = state.scores[0] - state.scores[1]
             # Multiplicamos el score final por un valor alto para priorizar victorias
+            # absolutas si la rama lleva al final de la partida.
             return float(score_diff * 1000 if state.is_player_max(state.player1) else -score_diff * 1000)
             
         me = state.player_max.label
@@ -43,6 +51,10 @@ class Solution3(StudentHeuristic):
         return "EsquinasYFichas"
 
     def evaluation_function(self, state: TwoPlayerGameState) -> float:
+        # Heurística Avanzada Híbrida: Combina la estabilidad de capturar esquinas
+        # con un peso menor a conseguir fichas. Las esquinas reciben un peso altísimo (x50).
+        # Esto enseña al Minimax a preferir movimientos que aseguren esquinas, y solo 
+        # cuando no haya esquinas en juego, preferirá capturar el mayor número de fichas.
         if state.end_of_game:
             score_diff = state.scores[0] - state.scores[1]
             return float(score_diff * 1000 if state.is_player_max(state.player1) else -score_diff * 1000)

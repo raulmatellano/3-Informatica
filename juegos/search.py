@@ -200,25 +200,30 @@ def build_game_tree(search_problem, max_depth):
     }
 
     def _build_tree(state, depth):
+        # Cada vez que entramos aquí, hemos generado un nuevo nodo en el árbol
         stats["nodes"] += 1
+        # Actualizamos la profundidad máxima si la profundidad actual es mayor
         stats["max_depth"] = max(stats["max_depth"], depth)
         
-        # Si llegamos a la profundidad maxima o a un estado objetivo, es una hoja
+        # Condición de parada (caso base): si llegamos a la profundidad límite 
+        # o a un estado ganador (objetivo), el nodo actual no se sigue explorando y se convierte en hoja.
         if depth == max_depth or search_problem.isGoalState(state):
             stats["leaves"] += 1
             return {"state": state, "children": []}
             
         successors = search_problem.getSuccessors(state)
         
-        # Si no hay sucesores posibles, tambien es nodo hoja
+        # Si un jugador se queda sin movimientos, este nodo también es un callejón sin salida (hoja).
         if not successors:
             stats["leaves"] += 1
             return {"state": state, "children": []}
             
+        # Si tiene sucesores, es un nodo interno. Contamos sus ramas para el cálculo del factor de ramificación.
         stats["internal_nodes"] += 1
         stats["branching_sum"] += len(successors)
         
         children = []
+        # Llamada recursiva (DFS implícito) para construir los hijos de este nodo
         for successor_state, action in successors:
             child_node = _build_tree(successor_state, depth + 1)
             children.append((action, child_node))
@@ -244,14 +249,18 @@ def depthFirstSearch(search_problem):
     print("Is the start a goal?", search_problem.isGoalState(search_problem.getStartState()))
     print("Start's successors:", search_problem.getSuccessors(search_problem.getStartState()))
     """
+    # DFS (Depth-First Search) explora siempre la rama más profunda primero.
+    # Por eso, usamos una Pila (Stack) con política LIFO (Last-In, First-Out).
     num_visited = 0
     structure = util.Stack()
+    # Guardamos en la pila una tupla: (estado_actual, camino_de_acciones_para_llegar_aqui)
     structure.push((search_problem.getStartState(), [])) # DEFINE THE INITIAL STATE
-    visited = []
+    visited = [] # Mantenemos control de nodos visitados para evitar ciclos (búsqueda en grafos)
 
     while not structure.isEmpty():
         current_state, path = structure.pop()
 
+        # Si el estado que acabamos de sacar de la pila es la meta, devolvemos el camino que nos trajo aquí.
         if search_problem.isGoalState(current_state):
             return num_visited, path # RETURN THE PATH OF STATES
 
@@ -259,6 +268,8 @@ def depthFirstSearch(search_problem):
             visited.append(current_state)
             num_visited += 1
 
+            # Añadimos todos los sucesores a la pila. Al ser una pila, el último en añadirse 
+            # será el primero en explorarse en la siguiente iteración (descendiendo por la rama).
             for successor in search_problem.getSuccessors(current_state):
                 if successor[0] not in visited:
                     new_path = path + [successor[1]] # CREATE THE NEW PATH OF STATES
@@ -269,6 +280,8 @@ def depthFirstSearch(search_problem):
 
 def breadthFirstSearch(search_problem):
     """Search the shallowest nodes in the search tree first."""
+    # BFS (Breadth-First Search) explora todo un nivel (ancho) antes de descender al siguiente.
+    # Esto garantiza encontrar el camino más corto, y por ello usamos una Cola (Queue) FIFO.
     num_visited = 0
     structure = util.Queue()
     structure.push((search_problem.getStartState(), []))
@@ -284,6 +297,8 @@ def breadthFirstSearch(search_problem):
             visited.append(current_state)
             num_visited += 1
 
+            # Añadimos sucesores a la cola. Al ser FIFO, se explorarán solo cuando
+            # todos los nodos del nivel superior se hayan agotado (por ancho).
             for successor in search_problem.getSuccessors(current_state):
                 if successor[0] not in visited:
                     new_path = path + [successor[1]]
@@ -307,13 +322,15 @@ def simpleHeuristic(state, search_problem=None):
 
 
 def get_distance_to_closest_corner(state, board_corners):
-    # Función auxiliar para calcular la distancia a la esquina más cercana disponible
+    # Función auxiliar: Calcula la distancia Manhattan desde todas nuestras fichas
+    # hacia las esquinas del tablero. Queremos estar lo más cerca posible para capturarlas.
     my_coins = [pos for pos, color in state.board.items() if color == state.cur_player]
     if not my_coins: return float('inf')
     
     min_dist = float('inf')
     for pos in my_coins:
         for corner in board_corners:
+            # Solo consideramos esquinas que no sean ya propiedad del rival
             if state.board.get(corner) != (state.player2 if state.cur_player == state.player1 else state.player1):
                 dist = abs(pos[0] - corner[0]) + abs(pos[1] - corner[1])
                 if dist < min_dist:
@@ -322,11 +339,16 @@ def get_distance_to_closest_corner(state, board_corners):
 
 
 def heuristic1(state, search_problem=None):
+    # Heurística Básica: Solo calcula la cercanía a la esquina. 
+    # Es rápida pero imprecisa, porque en Reversi no te mueves libremente, sino saltando fichas.
     corners = [(1, 1), (1, state.height), (state.width, 1), (state.width, state.height)]
     return get_distance_to_closest_corner(state, corners)
 
 
 def heuristic2(state, search_problem=None):
+    # Heurística Intermedia: Agrega la cantidad de fichas del rival al cálculo.
+    # Al sumarlo, la función de coste penaliza estados donde el rival tiene demasiadas fichas,
+    # emparejando la cercanía a la esquina con la supervivencia en el tablero.
     corners = [(1, 1), (1, state.height), (state.width, 1), (state.width, state.height)]
     base_dist = get_distance_to_closest_corner(state, corners)
     adversary = state.player2 if state.cur_player == state.player1 else state.player1
@@ -335,6 +357,8 @@ def heuristic2(state, search_problem=None):
 
 
 def heuristic3(state, search_problem=None):
+    # Heurística Avanzada: Además de considerar al rival y las esquinas, valora la "movilidad".
+    # Restar my_moves premia fuertemente los estados que nos dejan muchas opciones de jugada (versatilidad).
     h2 = heuristic2(state, search_problem)
     my_moves = len(state.legalMoves())
     return h2 - my_moves
@@ -342,17 +366,21 @@ def heuristic3(state, search_problem=None):
 
 def aStarSearch(search_problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
+    # A* (A-Star) es una búsqueda informada. Usa PriorityQueue para extraer primero
+    # el nodo con la función f(n) más pequeña. f(n) = g(n) + h(n).
     num_visited = 0
     structure = util.PriorityQueue()
     start_state = search_problem.getStartState()
     
-    # La prioridad es f(n) = g(n) + h(n).
+    # g(n) es el coste real desde el inicio (en Reversi cada turno es 1 paso, init g(n)=0).
+    # h(n) es el valor devuelto por la heurística (estimación al objetivo).
     structure.push((start_state, []), heuristic(start_state, search_problem))
     visited = []
 
     while not structure.isEmpty():
         current_state, path = structure.pop()
 
+        # Si llegamos a la meta, A* garantiza que este camino es óptimo si la heurística usada es admisible.
         if search_problem.isGoalState(current_state):
             return num_visited, path
 
@@ -363,8 +391,12 @@ def aStarSearch(search_problem, heuristic=nullHeuristic):
             for successor in search_problem.getSuccessors(current_state):
                 if successor[0] not in visited:
                     new_path = path + [successor[1]]
+                    # g_cost es el número de movimientos tomados hasta este nodo
                     g_cost = len(new_path)
+                    # h_cost estima cuánto falta para alcanzar una esquina usando la función heurística
                     h_cost = heuristic(successor[0], search_problem)
+                    
+                    # La prioridad es la suma de ambos, favoreciendo caminos cortos y/o prometedores.
                     f_cost = g_cost + h_cost
                     structure.push((successor[0], new_path), f_cost)
 
