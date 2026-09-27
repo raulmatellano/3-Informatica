@@ -1,16 +1,18 @@
+# Lo mismo que en el Dockerfile de usuario. Empezamos con Python puro.
 FROM python:3.11-slim
 
+# Nos metemos en la carpeta /app del contenedor
 WORKDIR /app
 
-# Instalar dependencias primero para aprovechar la caché de Docker
+# Instalamos Quart y otras librerías
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código fuente
+# Copiamos el archivo de código específico para este microservicio (file.py)
 COPY file.py .
 
-# Exponer el puerto
+# Le avisamos a Docker que este se comunica por el puerto 5051
 EXPOSE 5051
 
-# Comando para ejecutar la aplicación
+# Comando final para ejecutar la aplicación de ficheros
 CMD ["python", "file.py"]
