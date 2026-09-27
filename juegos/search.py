@@ -4,6 +4,11 @@
         Alejandro Bellogin <alejandro.bellogin@uam.es>
 """
 
+# Autores: Raul Matellano, Jorge Palomino
+# Grupo de prácticas: (rellenar)  Pareja: (rellenar)
+# Descripción: Implementación de la generación del árbol de juego y algoritmos de búsqueda.
+
+
 import search
 import random
 
@@ -49,7 +54,7 @@ class CornerReversiState:
           Returns a list of legal moves from the current state.
         """
         next_player = self.player2 if self.cur_player == self.player1 else self.player1
-        return """YOUR CODE HERE""" # RETURN THE LIST OF VALID MOVES
+        return get_valid_moves(self.board, self.height, self.width, self.cur_player, next_player, self.blocked_cell_label, self.ignore_block_cells_in_captures)
 
     def result(self, move):
         """
@@ -64,8 +69,8 @@ class CornerReversiState:
         result_board[move] = self.cur_player
         # flip enemy
         for enemy in enemy_captured_by_move(self.board, move, self.cur_player, adversary, self.blocked_cell_label, self.ignore_block_cells_in_captures):
-            result_board[enemy] = """YOUR CODE HERE""" # update the board
-        return """YOUR CODE HERE""" # RETURN THE NEW STATE CONSIDERING THE UPDATES
+            result_board[enemy] = self.cur_player # update the board
+        return CornerReversiState(result_board, self.player1, self.player2, adversary, self.height, self.width, self.ignore_block_cells_in_captures)
 
     # Utilities for comparison and display
     def __eq__(self, other):
@@ -192,11 +197,37 @@ def build_game_tree(search_problem, max_depth):
         "max_depth": 0,
         "branching_sum": 0,
         "internal_nodes": 0,
-        }
+    }
 
-    """YOUR CODE HERE"""
+    def _build_tree(state, depth):
+        stats["nodes"] += 1
+        stats["max_depth"] = max(stats["max_depth"], depth)
+        
+        # Si llegamos a la profundidad maxima o a un estado objetivo, es una hoja
+        if depth == max_depth or search_problem.isGoalState(state):
+            stats["leaves"] += 1
+            return {"state": state, "children": []}
+            
+        successors = search_problem.getSuccessors(state)
+        
+        # Si no hay sucesores posibles, tambien es nodo hoja
+        if not successors:
+            stats["leaves"] += 1
+            return {"state": state, "children": []}
+            
+        stats["internal_nodes"] += 1
+        stats["branching_sum"] += len(successors)
+        
+        children = []
+        for successor_state, action in successors:
+            child_node = _build_tree(successor_state, depth + 1)
+            children.append((action, child_node))
+            
+        return {"state": state, "children": children}
 
-    return None, stats
+    root = _build_tree(search_problem.getStartState(), 0)
+
+    return root, stats
 
 
 def depthFirstSearch(search_problem):
@@ -215,31 +246,50 @@ def depthFirstSearch(search_problem):
     """
     num_visited = 0
     structure = util.Stack()
-    structure.push("""YOUR CODE HERE""") # DEFINE THE INITIAL STATE
+    structure.push((search_problem.getStartState(), [])) # DEFINE THE INITIAL STATE
     visited = []
 
     while not structure.isEmpty():
-        path = structure.pop()
-        current_state = """YOUR CODE HERE""" # INDEX THE CURRENT STATE
+        current_state, path = structure.pop()
 
         if search_problem.isGoalState(current_state):
-            return """YOUR CODE HERE""" # RETURN THE PATH OF STATES
+            return num_visited, path # RETURN THE PATH OF STATES
 
         if current_state not in visited:
             visited.append(current_state)
+            num_visited += 1
 
             for successor in search_problem.getSuccessors(current_state):
                 if successor[0] not in visited:
-                    new_path = """YOUR CODE HERE""" # CREATE THE NEW PATH OF STATES
-                    structure.push(new_path)
+                    new_path = path + [successor[1]] # CREATE THE NEW PATH OF STATES
+                    structure.push((successor[0], new_path))
 
     return num_visited, None
 
 
 def breadthFirstSearch(search_problem):
     """Search the shallowest nodes in the search tree first."""
-    "*** YOUR CODE HERE ***"
-    raise NotImplementedError
+    num_visited = 0
+    structure = util.Queue()
+    structure.push((search_problem.getStartState(), []))
+    visited = []
+
+    while not structure.isEmpty():
+        current_state, path = structure.pop()
+
+        if search_problem.isGoalState(current_state):
+            return num_visited, path
+
+        if current_state not in visited:
+            visited.append(current_state)
+            num_visited += 1
+
+            for successor in search_problem.getSuccessors(current_state):
+                if successor[0] not in visited:
+                    new_path = path + [successor[1]]
+                    structure.push((successor[0], new_path))
+
+    return num_visited, None
 
 
 
@@ -256,25 +306,69 @@ def simpleHeuristic(state, search_problem=None):
     return len(state.board)
 
 
+def get_distance_to_closest_corner(state, board_corners):
+    # Función auxiliar para calcular la distancia a la esquina más cercana disponible
+    my_coins = [pos for pos, color in state.board.items() if color == state.cur_player]
+    if not my_coins: return float('inf')
+    
+    min_dist = float('inf')
+    for pos in my_coins:
+        for corner in board_corners:
+            if state.board.get(corner) != (state.player2 if state.cur_player == state.player1 else state.player1):
+                dist = abs(pos[0] - corner[0]) + abs(pos[1] - corner[1])
+                if dist < min_dist:
+                    min_dist = dist
+    return min_dist if min_dist != float('inf') else 0
+
+
 def heuristic1(state, search_problem=None):
-    "*** YOUR CODE HERE ***"
-    return 0
+    corners = [(1, 1), (1, state.height), (state.width, 1), (state.width, state.height)]
+    return get_distance_to_closest_corner(state, corners)
 
 
 def heuristic2(state, search_problem=None):
-    "*** YOUR CODE HERE ***"
-    return 0
+    corners = [(1, 1), (1, state.height), (state.width, 1), (state.width, state.height)]
+    base_dist = get_distance_to_closest_corner(state, corners)
+    adversary = state.player2 if state.cur_player == state.player1 else state.player1
+    enemy_coins = sum(1 for color in state.board.values() if color == adversary)
+    return base_dist + enemy_coins
 
 
 def heuristic3(state, search_problem=None):
-    "*** YOUR CODE HERE ***"
-    return 0
+    h2 = heuristic2(state, search_problem)
+    my_moves = len(state.legalMoves())
+    return h2 - my_moves
 
 
 def aStarSearch(search_problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
-    raise NotImplementedError
+    num_visited = 0
+    structure = util.PriorityQueue()
+    start_state = search_problem.getStartState()
+    
+    # La prioridad es f(n) = g(n) + h(n).
+    structure.push((start_state, []), heuristic(start_state, search_problem))
+    visited = []
+
+    while not structure.isEmpty():
+        current_state, path = structure.pop()
+
+        if search_problem.isGoalState(current_state):
+            return num_visited, path
+
+        if current_state not in visited:
+            visited.append(current_state)
+            num_visited += 1
+
+            for successor in search_problem.getSuccessors(current_state):
+                if successor[0] not in visited:
+                    new_path = path + [successor[1]]
+                    g_cost = len(new_path)
+                    h_cost = heuristic(successor[0], search_problem)
+                    f_cost = g_cost + h_cost
+                    structure.push((successor[0], new_path), f_cost)
+
+    return num_visited, None
 
 
 def createRandomReversiGeneralState(moves, h, w):

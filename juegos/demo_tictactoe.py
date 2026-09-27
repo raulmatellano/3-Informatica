@@ -35,7 +35,7 @@ player_minimax3_2 = Player(
     strategy=MinimaxStrategy(
         heuristic=heuristic,
         max_depth_minimax=3,
-        verbose=1,
+        verbose=2,
     ),
     delay=0,
 )
@@ -45,7 +45,7 @@ player_alphabeta = Player(
     strategy=MinimaxAlphaBetaStrategy(
         heuristic=heuristic,
         max_depth_minimax=3,
-        verbose=1,
+        verbose=2,
     ),
     delay=0,
 )
@@ -62,10 +62,10 @@ dim_board = 3
 # player_a, player_b = player_random, player_minimax3_1
 
 # Manual vs minimax player
-player_a, player_b = player_manual, player_minimax3_1
+# player_a, player_b = player_manual, player_minimax3_1
 
 # Minimax vs minimax with alpha beta pruning player
-# player_a, player_b = player_minimax3_2, player_alphabeta
+player_a, player_b = player_minimax3_2, player_alphabeta
 
 # Initialize a tic-tac-toe game.
 game = TicTacToe(
@@ -98,9 +98,8 @@ match = TwoPlayerMatch(
     game_state,
     max_seconds_per_move=1000,
     n_moves_max=500,
-    gui=True,
+    gui=False,
 )
 
 # Play a match.
 scores = match.play_match()
-input('Press any key to finish.')

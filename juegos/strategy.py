@@ -6,6 +6,10 @@
         Alberto Suárez <alberto.suarez@uam.es>
 """
 
+# Autores: Raul Matellano, Jorge Palomino
+# Grupo de prácticas: (rellenar)  Pareja: (rellenar)
+# Descripción: Implementación de Minimax con poda Alfa-Beta para Reversi.
+
 from __future__ import annotations  # For Python 3.7
 
 from abc import ABC, abstractmethod
@@ -221,20 +225,85 @@ class MinimaxAlphaBetaStrategy(Strategy):
         gui: bool = False,
     ) -> TwoPlayerGameState:
         """Compute the next state in the game."""
+        # Autores: Raul Matellano, Jorge Palomino
+        minimax_value, minimax_successor = self._max_value(
+            state,
+            self.max_depth_minimax,
+            -np.inf,
+            np.inf
+        )
 
-        # NOTE <YOUR CODE HERE>
-        minimax_successor = None
-
-        """
-        # Use this code snippet to trace the execution of the algorithm
-
-                 if self.verbose > 1:
-                    print('{}: [{:.2g}, {:.2g}]'.format(
-                            state.board,
-                            alpha,
-                            beta,
-                        )
-                    )
-        """
+        if self.verbose > 0:
+            if self.verbose > 1:
+                print('\nGame state before move:\n')
+                print(state.board)
+                print()
+            print('Minimax value = {:.2g}'.format(minimax_value))
 
         return minimax_successor
+
+    def _min_value(self, state: TwoPlayerGameState, depth: int, alpha: float, beta: float) -> tuple[float, TwoPlayerGameState]:
+        if state.end_of_game or depth == 0:
+            if self.timed_out:
+                minimax_value = 0
+            else:
+                time0 = time.time()
+                minimax_value = self.heuristic.evaluate(state)
+                time1 = time.time()
+                if (self.max_sec_per_evaluation > 0) and ((time1 - time0) > self.max_sec_per_evaluation):
+                    print(f"Heuristic {self.heuristic.get_name()} timeout")
+                    self.timed_out = True
+            return minimax_value, None
+            
+        minimax_value = np.inf
+        minimax_successor = None
+
+        for successor in self.generate_successors(state):
+            if self.verbose > 1:
+                print('{}: [{:.2g}, {:.2g}]'.format(state.board, alpha, beta))
+
+            successor_minimax_value, _ = self._max_value(successor, depth - 1, alpha, beta)
+
+            if successor_minimax_value < minimax_value:
+                minimax_value = successor_minimax_value
+                minimax_successor = successor
+
+            if minimax_value <= alpha:
+                return minimax_value, minimax_successor
+                
+            beta = min(beta, minimax_value)
+
+        return minimax_value, minimax_successor
+
+    def _max_value(self, state: TwoPlayerGameState, depth: int, alpha: float, beta: float) -> tuple[float, TwoPlayerGameState]:
+        if state.end_of_game or depth == 0:
+            if self.timed_out:
+                minimax_value = 0
+            else:
+                time0 = time.time()
+                minimax_value = self.heuristic.evaluate(state)
+                time1 = time.time()
+                if (self.max_sec_per_evaluation > 0) and ((time1 - time0) > self.max_sec_per_evaluation):
+                    print(f"Heuristic {self.heuristic.get_name()} timeout")
+                    self.timed_out = True
+            return minimax_value, None
+            
+        minimax_value = -np.inf
+        minimax_successor = None
+
+        for successor in self.generate_successors(state):
+            if self.verbose > 1:
+                print('{}: [{:.2g}, {:.2g}]'.format(state.board, alpha, beta))
+
+            successor_minimax_value, _ = self._min_value(successor, depth - 1, alpha, beta)
+
+            if successor_minimax_value > minimax_value:
+                minimax_value = successor_minimax_value
+                minimax_successor = successor
+
+            if minimax_value >= beta:
+                return minimax_value, minimax_successor
+                
+            alpha = max(alpha, minimax_value)
+
+        return minimax_value, minimax_successor
