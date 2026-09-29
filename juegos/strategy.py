@@ -242,6 +242,14 @@ class MinimaxAlphaBetaStrategy(Strategy):
 
         return minimax_successor
 
+    # ==========================================
+    # [MODIFICACIÓN ALUMNO]: PODA ALFA-BETA (MIN)
+    # ==========================================
+    # Por qué se ha hecho así:
+    # Este método simula el turno del rival. Buscamos el escenario que minimice 
+    # la utilidad para nosotros. Además, gracias a las variables 'alpha' y 'beta', 
+    # podemos descartar ramas del árbol que ya sabemos que son peores que alternativas 
+    # previamente descubiertas, ahorrando muchísimo tiempo de cálculo (poda).
     def _min_value(self, state: TwoPlayerGameState, depth: int, alpha: float, beta: float) -> tuple[float, TwoPlayerGameState]:
         # MIN_VALUE: Intenta minimizar la utilidad (turno del rival).
         if state.end_of_game or depth == 0:
@@ -282,6 +290,14 @@ class MinimaxAlphaBetaStrategy(Strategy):
 
         return minimax_value, minimax_successor
 
+    # ==========================================
+    # [MODIFICACIÓN ALUMNO]: PODA ALFA-BETA (MAX)
+    # ==========================================
+    # Por qué se ha hecho así:
+    # Este método simula nuestro turno. Buscamos el escenario que maximice nuestra utilidad.
+    # Al igual que en _min_value, usamos 'alpha' y 'beta' para cortar el análisis de ramas
+    # cuando confirmamos que el rival (desde su turno de MIN_VALUE) jamás nos permitiría 
+    # llegar a este nodo (porque tendría opciones mejores para él).
     def _max_value(self, state: TwoPlayerGameState, depth: int, alpha: float, beta: float) -> tuple[float, TwoPlayerGameState]:
         # MAX_VALUE: Intenta maximizar la utilidad (nuestro turno).
         if state.end_of_game or depth == 0:

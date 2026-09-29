@@ -183,6 +183,13 @@ class AllCornersReversiSearchProblem(CornerReversiSearchProblem):
         return state.isGoal(4)
 
 
+# ==========================================
+# [MODIFICACIÓN ALUMNO]: IMPLEMENTACIÓN DE BUILD_GAME_TREE
+# ==========================================
+# Por qué se ha hecho así:
+# Usamos una función interna recursiva `_build_tree` que actúa como un DFS,
+# descendiendo por las ramas hasta encontrar el caso base (profundidad máxima o victoria),
+# y contabiliza nodos hoja y ramas para calcular el factor de ramificación medio.
 def build_game_tree(search_problem, max_depth):
     """
     Greates a game tree from a search problem until max_depth.
@@ -235,6 +242,12 @@ def build_game_tree(search_problem, max_depth):
     return root, stats
 
 
+# ==========================================
+# [MODIFICACIÓN ALUMNO]: IMPLEMENTACIÓN DE DFS
+# ==========================================
+# Por qué se ha hecho así:
+# DFS utiliza una Pila (LIFO) para sumergirse lo más rápido posible hacia
+# las profundidades del árbol. Guardamos en la Pila tuplas (estado, camino).
 def depthFirstSearch(search_problem):
     """
     Search the deepest nodes in the search tree first.
@@ -278,6 +291,13 @@ def depthFirstSearch(search_problem):
     return num_visited, None
 
 
+# ==========================================
+# [MODIFICACIÓN ALUMNO]: IMPLEMENTACIÓN DE BFS
+# ==========================================
+# Por qué se ha hecho así:
+# BFS utiliza una Cola (FIFO) para asegurar que se exploran todos los
+# nodos de un nivel antes de pasar al siguiente. Así garantiza encontrar
+# el camino más corto, aunque consuma mucha más memoria que DFS.
 def breadthFirstSearch(search_problem):
     """Search the shallowest nodes in the search tree first."""
     # BFS (Breadth-First Search) explora todo un nivel (ancho) antes de descender al siguiente.
@@ -321,6 +341,14 @@ def simpleHeuristic(state, search_problem=None):
     return len(state.board)
 
 
+# ==========================================
+# [MODIFICACIÓN ALUMNO]: IMPLEMENTACIÓN DE HEURÍSTICAS A*
+# ==========================================
+# Por qué se han hecho así:
+# - Se ha creado `get_distance_to_closest_corner` como función auxiliar para todas las heurísticas 
+#   puesto que el objetivo del problema es atrapar las esquinas.
+# - Las heurísticas 1, 2 y 3 van incrementando en complejidad (usando más variables del juego) 
+#   para hacer estimaciones más exactas del coste real para llegar a la meta.
 def get_distance_to_closest_corner(state, board_corners):
     # Función auxiliar: Calcula la distancia Manhattan desde todas nuestras fichas
     # hacia las esquinas del tablero. Queremos estar lo más cerca posible para capturarlas.
@@ -364,6 +392,13 @@ def heuristic3(state, search_problem=None):
     return h2 - my_moves
 
 
+# ==========================================
+# [MODIFICACIÓN ALUMNO]: IMPLEMENTACIÓN DE A*
+# ==========================================
+# Por qué se ha hecho así:
+# A* necesita ordenar los nodos por su coste total estimado f(n).
+# Utilizamos PriorityQueue que internamente mantiene los nodos ordenados 
+# cada vez que hacemos .push(estado, prioridad).
 def aStarSearch(search_problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     # A* (A-Star) es una búsqueda informada. Usa PriorityQueue para extraer primero
