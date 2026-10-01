@@ -1,0 +1,19 @@
+Autores: Raúl Matellano de la Morena y Jorge Palomino
+
+Archivos entregados:
+- practica1.py (Script principal modificado)
+- rc1_pcap.py (Wrapper proporcionado)
+- practica1captura.png (Captura de validación con Wireshark)
+- leeme.txt (Este archivo)
+
+Criterios de evaluación solicitados:
+
+- Normativa de entrega cumplida en su totalidad: Realizado (Se ha revisado el formato del ZIP y los nombres de los ficheros).
+- Contar paquetes de una traza: Realizado (Se ha comprobado que el contador final coincide con las estadísticas de Wireshark).
+- Contar paquetes de la interfaz de red: Realizado (Se valida el contador tras interrumpir con Ctrl+C).
+- Uso de un único "flujo" para traza e interfaz: Realizado (El programa solo bifurca al abrir el descriptor; el procesamiento usa el mismo pcap_loop).
+- Almacenar correctamente el tráfico capturado en vivo en una traza: Realizado (Se verificó abriendo el pcap resultante en Wireshark).
+- Separar correctamente el trafico capturado en dos trazas: Realizado (Se comprobó que los paquetes ARP/protocolos específicos con bytes 0x08 y 0x06 van al archivo NOIP y el resto al general).
+- Gestionar correctamente el numero de paquetes a leer: Realizado (El parámetro --npkts detiene la captura exactamente en el límite).
+- Calcular tiempo entre último y primer paquete: Realizado (Se han restado los timestamps flotantes y comprobado manualmente).
+- Imprimir los N primeros bytes de un paquete (pruebe para N>32) y validarlo con Wireshark (captura de pantalla): Realizado (Se adjunta practica1captura.png demostrando la coincidencia exacta).
