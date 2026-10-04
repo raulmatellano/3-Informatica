@@ -4,7 +4,7 @@
     como argumento y los vuelca a traza nueva con tiempo actual
 
     Autor: Jorge Palomino y Raul Matellano
-    2020 EPS-UAM
+    2026 EPS-UAM
 '''
 
 from rc1_pcap import *
