@@ -3,17 +3,10 @@ import random
 import string   
 import sys      
 
-# ==============================================================================
-# EXPLICACIÓN:
-# Este es el CLIENTE DE PRUEBAS. Finge ser un usuario normal (como un navegador
-# o Postman) que se intenta conectar a nuestra API para ver si todo funciona.
-# ==============================================================================
 
-# Definimos dónde están nuestros dos servicios
 URL_USUARIO = "http://127.0.0.1:5050"
 URL_FICHERO = "http://127.0.0.1:5051"
 
-# Contadores para saber cuántas pruebas hemos pasado
 pruebas_superadas = 0
 total_pruebas = 19
 
@@ -35,7 +28,6 @@ def ejecutar_prueba_con_codigo(nombre, respuesta, codigo_esperado):
     ejecutar_prueba(nombre, respuesta.status_code == codigo_esperado)
 
 def run_tests():
-    # Usamos un sufijo aleatorio de 4 letras/números para que el usuario sea distinto 
     suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=4))
     username = f"alice_{suffix}"
     password = "password123"
@@ -45,9 +37,6 @@ def run_tests():
     token = None
     filename = "testdoc"
     
-    # --------------------------------------------------------------------------
-    # PRUEBAS DE USER.PY (Gestión de usuarios)
-    # --------------------------------------------------------------------------
 
     r = requests.put(f"{URL_USUARIO}/user", json={"name": username, "password": password})
     ejecutar_prueba_con_codigo("PUT /user - crear usuario alice", r, 201)
@@ -74,11 +63,9 @@ def run_tests():
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     headers_invalidos = {"Authorization": "Bearer badtoken"}
     
-    # MODIFICACIÓN: Quitamos el "name" del JSON, enviando solo "password"
     r = requests.patch(f"{URL_USUARIO}/user", json={"password": nueva_password}, headers=headers)
     ejecutar_prueba_con_codigo("PATCH /user - cambiar contraseña", r, 200)
     
-    # MODIFICACIÓN: Igual aquí, solo "password"
     r = requests.patch(f"{URL_USUARIO}/user", json={"password": password}, headers=headers_invalidos)
     ejecutar_prueba_con_codigo("PATCH /user - token invalido", r, 401)
     
@@ -86,9 +73,6 @@ def run_tests():
         print("UID no disponible porque falló la creación de usuario. Saltando tests de ficheros...")
         return
         
-    # --------------------------------------------------------------------------
-    # PRUEBAS DE FILE.PY (Gestión de Ficheros)
-    # --------------------------------------------------------------------------
 
     r = requests.put(f"{URL_FICHERO}/file/{uid}/{filename}", json={"content": "hola mundo"}, headers=headers)
     ejecutar_prueba_con_codigo("PUT /file - subir documento privado", r, 201)
