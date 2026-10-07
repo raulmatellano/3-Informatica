@@ -51,68 +51,86 @@ class Solution1(StudentHeuristic):
         return float(puntos)
 
 
-# ===========================================================================
-# HEURÍSTICA DE RESPALDO 1 — Solution2
-# Nombre: ControlEsquinas
-# Uso: respaldo en Solution2; se usará como heurística principal en Torneo 2
-#      (sustituida por FrontierPenalty, pero sirve como segunda opción aquí).
-# ===========================================================================
+
 class Solution2(StudentHeuristic):
     def get_name(self) -> str:
-        return "ControlEsquinas"
+        return "sol2"
 
     def evaluation_function(self, state: TwoPlayerGameState) -> float:
-        # Las esquinas son posiciones absolutamente estables: una vez capturadas,
-        # no pueden ser volteadas en ningún caso. Controlarlas es una ventaja
-        # permanente. Esta heurística simplemente cuenta cuántas esquinas tiene
-        # cada jugador y devuelve la diferencia.
         if state.end_of_game:
-            diff = state.scores[0] - state.scores[1]
-            factor = 1000 if state.is_player_max(state.player1) else -1000
-            return float(diff * factor)
+            puntos1, puntos2 = state.scores
+            if state.is_player_max(state.player1):
+                return float((puntos1 - puntos2)*5000)
+            else:
+                return float((puntos2 - puntos1)*5000)
 
-        me = state.player_max.label
-        rival = state.player1.label if me == state.player2.label else state.player2.label
-        board = state.board
+        p1 = state.player1.label
+        p2 = state.player2.label
+        yo = state.player_max.label
+        if yo == p1:
+            rival = p2
+        else: 
+            rival = p1
+        
         h, w = state.game.height, state.game.width
 
-        corners = [(1, 1), (1, h), (w, 1), (w, h)]
-        my_corners  = sum(1 for c in corners if board.get(c) == me)
-        adv_corners = sum(1 for c in corners if board.get(c) == rival)
+        esquinas = [(1, 1), (1, h), (w, 1), (w, h)]
+        misEsquinas = 0
+        susEsquinas = 0
+        
+        for casilla in esquinas:
+            ficha = state.board.get(casilla)
+            if ficha == yo:
+                misEsquinas += 1
+            elif ficha == rival:
+                susEsquinas += 1
 
-        return float(my_corners - adv_corners)
+        return float(misEsquinas - susEsquinas)
 
 
-# ===========================================================================
-# HEURÍSTICA DE RESPALDO 2 — Solution3
-# Nombre: EsquinasYFichas
-# Uso: tercera opción; combina control de esquinas con diferencia de fichas.
-# ===========================================================================
 class Solution3(StudentHeuristic):
     def get_name(self) -> str:
-        return "EsquinasYFichas"
+        return "sol3"
 
     def evaluation_function(self, state: TwoPlayerGameState) -> float:
-        # Heurística híbrida: premia fuertemente las esquinas (peso x50) y usa
-        # la diferencia de fichas como criterio de desempate secundario.
-        # La lógica es que el Minimax prefiera asegurar esquinas por encima de
-        # cualquier otra consideración, y solo cuando no haya diferencia en
-        # esquinas, prefiera capturar más fichas.
         if state.end_of_game:
-            diff = state.scores[0] - state.scores[1]
-            factor = 1000 if state.is_player_max(state.player1) else -1000
-            return float(diff * factor)
+            puntos1, puntos2 = state.scores
+            if state.is_player_max(state.player1):
+                return float((puntos1 - puntos2)*5000)
+            else:
+                return float((puntos2 - puntos1)*5000)
 
-        me = state.player_max.label
-        rival = state.player1.label if me == state.player2.label else state.player2.label
-        board = state.board
+        p1 = state.player1.label
+        p2 = state.player2.label
+        yo = state.player_max.label
+        if yo == p1:
+            rival = p2
+        else: 
+            rival = p1
+
+
         h, w = state.game.height, state.game.width
+        esquinas = [(1, 1), (1, h), (w, 1), (w, h)]
+        
+        misEsquinas = 0
+        susEsquinas = 0
+        
+        for casilla in esquinas:
+            ficha = state.board.get(casilla)
+            if ficha == yo:
+                misEsquinas += 1
+            elif ficha == rival:
+                susEsquinas += 1
+                    
+        misFichas = 0
+        susFichas = 0
+        
+        for ficha in state.board.values():
+            if ficha == yo:
+                misFichas += 1
+            elif ficha == rival: 
+                susFichas += 1
+        
 
-        corners = [(1, 1), (1, h), (w, 1), (w, h)]
-        my_corners  = sum(1 for c in corners if board.get(c) == me)
-        adv_corners = sum(1 for c in corners if board.get(c) == rival)
 
-        my_coins  = sum(1 for c in board.values() if c == me)
-        adv_coins = sum(1 for c in board.values() if c == rival)
-
-        return float((my_corners - adv_corners) * 50 + (my_coins - adv_coins))
+        return float((misEsquinas - susEsquinas) * 50 + (misFichas - susFichas))
