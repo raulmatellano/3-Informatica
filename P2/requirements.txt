@@ -1,0 +1,12 @@
+# Dependencias del proyecto Práctica 2 - Sistemas Informáticos (EPS - UAM)
+# Framework web asíncrono (ASGI)
+Quart>=0.19.0
+Hypercorn>=0.16.0
+
+# Base de datos y mapeo relacional asíncrono
+SQLAlchemy>=2.0.0
+asyncpg>=0.29.0
+
+# Cliente HTTP para tests automáticos (client.py)
+requests>=2.31.0
+aiofiles>=24.0.0
