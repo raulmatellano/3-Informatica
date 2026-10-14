@@ -2,12 +2,12 @@
 Autores:
 Jorge Palomino y Raul Matellano
 
-## Instrucciones para ejecutar con Docker (Recomendado):
+## Instrucciones para ejecutar con Docker:
 
 1. Construye y levanta los contenedores en segundo plano:
    sudo docker-compose up --build -d
 
-2. Ejecuta el cliente automático de pruebas para verificar el funcionamiento (19/19 tests):
+2. Ejecuta el cliente automático de pruebas para verificar el funcionamiento:
    python cliente.py
 
 3. Para detener los contenedores al terminar:
