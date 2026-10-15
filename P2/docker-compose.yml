@@ -1,32 +1,11 @@
 # ============================================================================
-# PRÁCTICA 2: SISTEMAS INFORMÁTICOS - CURSO 2026/2027
-# ESCUELA POLITÉCNICA SUPERIOR - UNIVERSIDAD AUTÓNOMA DE MADRID
-# ARCHIVO: docker-compose.yml (Orquestación del SGBD y microservicios)
+# PRÁCTICA 2: SISTEMAS INFORMÁTICOS
+# ARCHIVO: docker-compose.yml (Orquestación completa)
 # ============================================================================
-
-# ¿POR QUÉ SE HACE ASÍ?:
-#   - El enunciado exige explícitamente:
-#     1) Desplegar un contenedor Docker con una imagen oficial de PostgreSQL.
-#     2) Crear el usuario 'alumnodb' con contraseña '1234' y la base de datos 'si1'.
-#     3) Ejecutar automáticamente los scripts schema.sql y populate.sql en el primer arranque.
-#     4) Persistir los datos en un volumen externo para que no se pierdan al reiniciar.
-#
-# ¿CÓMO SE HACE?:
-#   - Se utiliza la imagen oficial 'postgres:15-alpine' (ligera, segura y rápida).
-#   - Se configuran las variables de entorno POSTGRES_USER, POSTGRES_PASSWORD y POSTGRES_DB.
-#   - Se montan como volumen de solo lectura (:ro) en el directorio especial
-#     '/docker-entrypoint-initdb.d/' los scripts 'schema.sql' y 'populate.sql'
-#     prefijados con 01_ y 02_ para garantizar el orden estricto de ejecución.
-#   - Se declara un volumen nombrado 'postgres_data' apuntando a '/var/lib/postgresql/data'.
-#
-# ¿PARA QUÉ SE HACE ASÍ?:
-#   - Para que cualquier miembro del equipo o el profesor pueda ejecutar 'docker-compose up -d'
-#     y disponer de la base de datos completamente configurada, poblada y funcional al instante.
-# ============================================================================
-
 version: "3.8"
 
 services:
+  # 1. Contenedor de la Base de Datos
   db:
     image: postgres:15-alpine
     container_name: videoclub_db
@@ -41,6 +20,33 @@ services:
       - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./populate.sql:/docker-entrypoint-initdb.d/02_populate.sql:ro
       - postgres_data:/var/lib/postgresql/data
+
+  # 2. Contenedor del Microservicio de Usuarios
+  user_api:
+    build: .
+    container_name: videoclub_user_api
+    command: python user.py
+    ports:
+      - "5050:5050"
+    environment:
+      # Se conecta a la BD usando el nombre del contenedor 'db'
+      DATABASE_URL: "postgresql+asyncpg://alumnodb:1234@db:5432/si1"
+      SECRET_KEY: "clave_super_secreta_para_la_practica"
+    depends_on:
+      - db
+
+  # 3. Contenedor del Microservicio Principal
+  main_api:
+    build: .
+    container_name: videoclub_main_api
+    command: python api.py
+    ports:
+      - "5051:5051"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://alumnodb:1234@db:5432/si1"
+      SECRET_KEY: "clave_super_secreta_para_la_practica"
+    depends_on:
+      - db
 
 volumes:
   postgres_data:
