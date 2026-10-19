@@ -6,10 +6,6 @@
         Alberto Suárez <alberto.suarez@uam.es>
 """
 
-# Autores: Raul Matellano, Jorge Palomino
-# Grupo de prácticas: (rellenar)  Pareja: (rellenar)
-# Descripción: Implementación de Minimax con poda Alfa-Beta para Reversi.
-
 from __future__ import annotations  # For Python 3.7
 
 from abc import ABC, abstractmethod
@@ -225,12 +221,11 @@ class MinimaxAlphaBetaStrategy(Strategy):
         gui: bool = False,
     ) -> TwoPlayerGameState:
         """Compute the next state in the game."""
-        # Autores: Raul Matellano, Jorge Palomino
         minimax_value, minimax_successor = self._max_value(
             state,
             self.max_depth_minimax,
             -np.inf,
-            np.inf
+            np.inf,
         )
 
         if self.verbose > 0:
@@ -242,98 +237,82 @@ class MinimaxAlphaBetaStrategy(Strategy):
 
         return minimax_successor
 
-    # ==========================================
-    # [MODIFICACIÓN ALUMNO]: PODA ALFA-BETA (MIN)
-    # ==========================================
-    # Por qué se ha hecho así:
-    # Este método simula el turno del rival. Buscamos el escenario que minimice 
-    # la utilidad para nosotros. Además, gracias a las variables 'alpha' y 'beta', 
-    # podemos descartar ramas del árbol que ya sabemos que son peores que alternativas 
-    # previamente descubiertas, ahorrando muchísimo tiempo de cálculo (poda).
-    def _min_value(self, state: TwoPlayerGameState, depth: int, alpha: float, beta: float) -> tuple[float, TwoPlayerGameState]:
-        # MIN_VALUE: Intenta minimizar la utilidad (turno del rival).
+    def _min_value(
+        self,
+        state: TwoPlayerGameState,
+        depth: int,
+        alpha: float,
+        beta: float,
+    ) -> tuple[float, TwoPlayerGameState]:
+        """Min step of the minimax algorithm with alpha-beta pruning."""
         if state.end_of_game or depth == 0:
             if self.timed_out:
                 minimax_value = 0
             else:
                 time0 = time.time()
-                minimax_value = self.heuristic.evaluate(state) # Evaluamos el estado si llegamos a una hoja
+                minimax_value = self.heuristic.evaluate(state)
                 time1 = time.time()
                 if (self.max_sec_per_evaluation > 0) and ((time1 - time0) > self.max_sec_per_evaluation):
                     print(f"Heuristic {self.heuristic.get_name()} timeout")
                     self.timed_out = True
             return minimax_value, None
-            
-        minimax_value = np.inf # Iniciamos con infinito positivo porque buscamos minimizar
+
+        minimax_value = np.inf
         minimax_successor = None
 
         for successor in self.generate_successors(state):
             if self.verbose > 1:
                 print('{}: [{:.2g}, {:.2g}]'.format(state.board, alpha, beta))
 
-            # Llamada recursiva a MAX para evaluar la respuesta a nuestra acción
             successor_minimax_value, _ = self._max_value(successor, depth - 1, alpha, beta)
 
-            # Si encontramos un valor más pequeño, es mejor para el rival (y peor para nosotros)
             if successor_minimax_value < minimax_value:
                 minimax_value = successor_minimax_value
                 minimax_successor = successor
 
-            # PODA ALFA: Si el valor mínimo encontrado aquí es menor o igual a 'alpha' (el mejor valor 
-            # asegurado por MAX más arriba en el árbol), sabemos que MAX nunca elegirá esta rama. 
-            # Por tanto, no perdemos tiempo evaluando más sucesores y cortamos la búsqueda aquí.
             if minimax_value <= alpha:
                 return minimax_value, minimax_successor
-                
-            # Actualizamos beta (el mejor valor, es decir, el más bajo, asegurado por MIN hasta ahora)
+
             beta = min(beta, minimax_value)
 
         return minimax_value, minimax_successor
 
-    # ==========================================
-    # [MODIFICACIÓN ALUMNO]: PODA ALFA-BETA (MAX)
-    # ==========================================
-    # Por qué se ha hecho así:
-    # Este método simula nuestro turno. Buscamos el escenario que maximice nuestra utilidad.
-    # Al igual que en _min_value, usamos 'alpha' y 'beta' para cortar el análisis de ramas
-    # cuando confirmamos que el rival (desde su turno de MIN_VALUE) jamás nos permitiría 
-    # llegar a este nodo (porque tendría opciones mejores para él).
-    def _max_value(self, state: TwoPlayerGameState, depth: int, alpha: float, beta: float) -> tuple[float, TwoPlayerGameState]:
-        # MAX_VALUE: Intenta maximizar la utilidad (nuestro turno).
+    def _max_value(
+        self,
+        state: TwoPlayerGameState,
+        depth: int,
+        alpha: float,
+        beta: float,
+    ) -> tuple[float, TwoPlayerGameState]:
+        """Max step of the minimax algorithm with alpha-beta pruning."""
         if state.end_of_game or depth == 0:
             if self.timed_out:
                 minimax_value = 0
             else:
                 time0 = time.time()
-                minimax_value = self.heuristic.evaluate(state) # Evaluamos la ventaja que tenemos en esta hoja
+                minimax_value = self.heuristic.evaluate(state)
                 time1 = time.time()
                 if (self.max_sec_per_evaluation > 0) and ((time1 - time0) > self.max_sec_per_evaluation):
                     print(f"Heuristic {self.heuristic.get_name()} timeout")
                     self.timed_out = True
             return minimax_value, None
-            
-        minimax_value = -np.inf # Iniciamos con infinito negativo porque buscamos maximizar
+
+        minimax_value = -np.inf
         minimax_successor = None
 
         for successor in self.generate_successors(state):
             if self.verbose > 1:
                 print('{}: [{:.2g}, {:.2g}]'.format(state.board, alpha, beta))
 
-            # Llamada recursiva a MIN simulando el turno del rival
             successor_minimax_value, _ = self._min_value(successor, depth - 1, alpha, beta)
 
-            # Si encontramos un valor más grande, es una mejor jugada para nosotros
             if successor_minimax_value > minimax_value:
                 minimax_value = successor_minimax_value
                 minimax_successor = successor
 
-            # PODA BETA: Si el valor máximo encontrado es mayor o igual a 'beta' (el mejor valor, más bajo, 
-            # asegurado por MIN más arriba), MIN nunca permitirá que el juego llegue hasta aquí, 
-            # elegirá otra rama antes. Por tanto, podemos dejar de evaluar los sucesores.
             if minimax_value >= beta:
                 return minimax_value, minimax_successor
-                
-            # Actualizamos alpha (el mejor valor, el más alto, asegurado por MAX hasta ahora)
+
             alpha = max(alpha, minimax_value)
 
         return minimax_value, minimax_successor

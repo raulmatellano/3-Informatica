@@ -232,8 +232,6 @@ class Solution3(StudentHeuristic):
         return "UltimaEsperanza"
 
     def evaluation_function(self, state: TwoPlayerGameState) -> float:
-        # 1. VICTORIA EXACTA
-        # Multiplicamos por 10000 para que cualquier victoria aplaste al resto de métricas.
         if state.end_of_game:
             dif = state.scores[0] - state.scores[1]
             if state.is_player_max(state.player1):
@@ -241,7 +239,6 @@ class Solution3(StudentHeuristic):
             else:
                 return float(dif * -10000)
 
-        # 2. IDENTIFICAR JUGADORES
         yo = state.player_max.label
         if yo == state.player2.label:
             rival = state.player1.label
@@ -262,7 +259,6 @@ class Solution3(StudentHeuristic):
         puntos_peligro = 0
         puntos_bordes = 0
 
-        # 3. RECORRIDO DE FICHAS Y FRONTERA
         direcciones = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 
         for x in range(1, w + 1):
@@ -277,7 +273,6 @@ class Solution3(StudentHeuristic):
                     else:
                         sus_fichas += 1
 
-                    # Comprobación de Frontera (fichas pegadas a espacios libres)
                     es_frontera = False
                     for dx, dy in direcciones:
                         nx = x + dx
@@ -290,7 +285,6 @@ class Solution3(StudentHeuristic):
                         if ficha == yo: mi_frontera += 1
                         else: su_frontera += 1
 
-        # 4. CONTROL DE ESQUINAS (+1000 es el valor rey del juego)
         esquinas = [(1, 1), (1, h), (w, 1), (w, h)]
         for ex, ey in esquinas:
             ficha_esq = board.get((ex, ey))
@@ -299,8 +293,6 @@ class Solution3(StudentHeuristic):
             elif ficha_esq == rival:
                 puntos_esquinas -= 1000
 
-        # 5. CASILLAS PELIGROSAS (X y C)
-        # Solo castigamos si la esquina está vacía. Si es nuestra, nos premia por estabilidad.
         casillas_x = [
             (2, 2, 1, 1), (2, h - 1, 1, h),
             (w - 1, 2, w, 1), (w - 1, h - 1, w, h)
@@ -310,11 +302,9 @@ class Solution3(StudentHeuristic):
             ficha_c = board.get((cx, cy))
 
             if ficha_esq is None:
-                # Peligro letal: regalar una esquina
                 if ficha_c == yo: puntos_peligro -= 300
                 elif ficha_c == rival: puntos_peligro += 300
             elif ficha_esq == yo:
-                # Estabilidad: tenemos la esquina y hacemos un bloque
                 if ficha_c == yo: puntos_peligro += 50
             elif ficha_esq == rival:
                 if ficha_c == rival: puntos_peligro -= 50
@@ -337,7 +327,6 @@ class Solution3(StudentHeuristic):
             elif ficha_esq == rival:
                 if ficha_c == rival: puntos_peligro -= 20
 
-        # 6. BORDES SEGUROS (Sin contar las C, que ya están arriba)
         for x in range(3, w - 1):
             if board.get((x, 1)) == yo: puntos_bordes += 20
             elif board.get((x, 1)) == rival: puntos_bordes -= 20
@@ -352,17 +341,11 @@ class Solution3(StudentHeuristic):
             if board.get((w, y)) == yo: puntos_bordes += 20
             elif board.get((w, y)) == rival: puntos_bordes -= 20
 
-        # 7. PUNTUACIONES MATEMÁTICAS CONTINUAS (El gran arreglo)
-        # Movilidad: Restamos 15 puntos por cada ficha de frontera que tengamos de más.
         puntos_frontera = (su_frontera - mi_frontera) * 15
 
-        # Transición matemática de Fichas: 
-        # Pasa suavemente de castigar tener fichas al principio, a premiarlo al final.
-        # Sin "ifs" que vuelvan loco al algoritmo Minimax.
         multiplicador_fichas = (25 - vacias) / 4.0
         puntos_fichas = (mis_fichas - sus_fichas) * multiplicador_fichas
 
-        # 8. SUMA FINAL
         puntuacion = (
             puntos_esquinas +
             puntos_peligro +
