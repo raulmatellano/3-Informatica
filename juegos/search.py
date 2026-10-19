@@ -360,14 +360,11 @@ def heuristic2(state, search_problem=None):
 
 
 def heuristic3(state, search_problem=None):
-    # Utiliza la base de la heurística 2 y le resta las opciones (movilidad) del rival
     valor_previo = heuristic2(state, search_problem)
     
-    # Calculamos los movimientos legales disponibles para el siguiente jugador (el rival)
     sucesores_rival = state.legalMoves()
     movilidad_rival = len(sucesores_rival)
     
-    # Restar la movilidad del rival penaliza estados donde le dejamos demasiadas opciones
     return float(valor_previo - movilidad_rival)
 
 
