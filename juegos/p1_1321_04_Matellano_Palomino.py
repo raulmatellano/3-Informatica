@@ -227,50 +227,148 @@ class Solution2(StudentHeuristic):
 
         return float(puntos)
 
-
-
 class Solution3(StudentHeuristic):
     def get_name(self) -> str:
-        return "sol3"
+        return "UltimaEsperanza"
 
     def evaluation_function(self, state: TwoPlayerGameState) -> float:
+        # 1. VICTORIA EXACTA
+        # Multiplicamos por 10000 para que cualquier victoria aplaste al resto de métricas.
         if state.end_of_game:
-            puntos1, puntos2 = state.scores
+            dif = state.scores[0] - state.scores[1]
             if state.is_player_max(state.player1):
-                return float((puntos1 - puntos2) * 5000)
+                return float(dif * 10000)
             else:
-                return float((puntos2 - puntos1) * 5000)
+                return float(dif * -10000)
 
-        p1 = state.player1.label
-        p2 = state.player2.label
+        # 2. IDENTIFICAR JUGADORES
         yo = state.player_max.label
-        if yo == p1:
-            rival = p2
+        if yo == state.player2.label:
+            rival = state.player1.label
         else:
-            rival = p1
+            rival = state.player2.label
 
-        h, w = state.game.height, state.game.width
+        board = state.board
+        w = state.game.width
+        h = state.game.height
+
+        mis_fichas = 0
+        sus_fichas = 0
+        vacias = 0
+        mi_frontera = 0
+        su_frontera = 0
+        
+        puntos_esquinas = 0
+        puntos_peligro = 0
+        puntos_bordes = 0
+
+        # 3. RECORRIDO DE FICHAS Y FRONTERA
+        direcciones = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
+        for x in range(1, w + 1):
+            for y in range(1, h + 1):
+                ficha = board.get((x, y))
+
+                if ficha is None:
+                    vacias += 1
+                elif ficha == yo or ficha == rival:
+                    if ficha == yo:
+                        mis_fichas += 1
+                    else:
+                        sus_fichas += 1
+
+                    # Comprobación de Frontera (fichas pegadas a espacios libres)
+                    es_frontera = False
+                    for dx, dy in direcciones:
+                        nx = x + dx
+                        ny = y + dy
+                        if 1 <= nx <= w and 1 <= ny <= h:
+                            if board.get((nx, ny)) is None:
+                                es_frontera = True
+                                break
+                    if es_frontera:
+                        if ficha == yo: mi_frontera += 1
+                        else: su_frontera += 1
+
+        # 4. CONTROL DE ESQUINAS (+1000 es el valor rey del juego)
         esquinas = [(1, 1), (1, h), (w, 1), (w, h)]
+        for ex, ey in esquinas:
+            ficha_esq = board.get((ex, ey))
+            if ficha_esq == yo:
+                puntos_esquinas += 1000
+            elif ficha_esq == rival:
+                puntos_esquinas -= 1000
 
-        misEsquinas = 0
-        susEsquinas = 0
+        # 5. CASILLAS PELIGROSAS (X y C)
+        # Solo castigamos si la esquina está vacía. Si es nuestra, nos premia por estabilidad.
+        casillas_x = [
+            (2, 2, 1, 1), (2, h - 1, 1, h),
+            (w - 1, 2, w, 1), (w - 1, h - 1, w, h)
+        ]
+        for cx, cy, ex, ey in casillas_x:
+            ficha_esq = board.get((ex, ey))
+            ficha_c = board.get((cx, cy))
 
-        for casilla in esquinas:
-            ficha = state.board.get(casilla)
-            if ficha == yo:
-                misEsquinas += 1
-            elif ficha == rival:
-                susEsquinas += 1
+            if ficha_esq is None:
+                # Peligro letal: regalar una esquina
+                if ficha_c == yo: puntos_peligro -= 300
+                elif ficha_c == rival: puntos_peligro += 300
+            elif ficha_esq == yo:
+                # Estabilidad: tenemos la esquina y hacemos un bloque
+                if ficha_c == yo: puntos_peligro += 50
+            elif ficha_esq == rival:
+                if ficha_c == rival: puntos_peligro -= 50
 
-        misFichas = 0
-        susFichas = 0
+        casillas_c = [
+            (1, 2, 1, 1), (2, 1, 1, 1),
+            (1, h - 1, 1, h), (2, h, 1, h),
+            (w - 1, 1, w, 1), (w, 2, w, 1),
+            (w - 1, h, w, h), (w, h - 1, w, h)
+        ]
+        for cx, cy, ex, ey in casillas_c:
+            ficha_esq = board.get((ex, ey))
+            ficha_c = board.get((cx, cy))
 
-        for ficha in state.board.values():
-            if ficha == yo:
-                misFichas += 1
-            elif ficha == rival:
-                susFichas += 1
+            if ficha_esq is None:
+                if ficha_c == yo: puntos_peligro -= 100
+                elif ficha_c == rival: puntos_peligro += 100
+            elif ficha_esq == yo:
+                if ficha_c == yo: puntos_peligro += 20
+            elif ficha_esq == rival:
+                if ficha_c == rival: puntos_peligro -= 20
 
-        return float((misEsquinas - susEsquinas) * 50 + (misFichas - susFichas))
+        # 6. BORDES SEGUROS (Sin contar las C, que ya están arriba)
+        for x in range(3, w - 1):
+            if board.get((x, 1)) == yo: puntos_bordes += 20
+            elif board.get((x, 1)) == rival: puntos_bordes -= 20
 
+            if board.get((x, h)) == yo: puntos_bordes += 20
+            elif board.get((x, h)) == rival: puntos_bordes -= 20
 
+        for y in range(3, h - 1):
+            if board.get((1, y)) == yo: puntos_bordes += 20
+            elif board.get((1, y)) == rival: puntos_bordes -= 20
+
+            if board.get((w, y)) == yo: puntos_bordes += 20
+            elif board.get((w, y)) == rival: puntos_bordes -= 20
+
+        # 7. PUNTUACIONES MATEMÁTICAS CONTINUAS (El gran arreglo)
+        # Movilidad: Restamos 15 puntos por cada ficha de frontera que tengamos de más.
+        puntos_frontera = (su_frontera - mi_frontera) * 15
+
+        # Transición matemática de Fichas: 
+        # Pasa suavemente de castigar tener fichas al principio, a premiarlo al final.
+        # Sin "ifs" que vuelvan loco al algoritmo Minimax.
+        multiplicador_fichas = (25 - vacias) / 4.0
+        puntos_fichas = (mis_fichas - sus_fichas) * multiplicador_fichas
+
+        # 8. SUMA FINAL
+        puntuacion = (
+            puntos_esquinas +
+            puntos_peligro +
+            puntos_bordes +
+            puntos_frontera +
+            puntos_fichas
+        )
+
+        return float(puntuacion)
