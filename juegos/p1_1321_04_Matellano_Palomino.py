@@ -1,3 +1,9 @@
+"""Implementation of evaluation functions for reversi.
+
+    Authors:
+        Jorge Palomino y Raul Matellano
+"""
+
 from game import TwoPlayerGameState
 from tournament import StudentHeuristic
 
