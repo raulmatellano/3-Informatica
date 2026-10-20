@@ -1,7 +1,6 @@
 -- ============================================================================
 -- Ejercicio 6: Optimizacion
 -- ============================================================================
-
 -- 1. Lo primero fue hacer un EXPLAIN ANALYZE para ver que fallaba
 -- Vi que PostgreSQL hacia un "Seq Scan" (escanear toda la tabla fila a fila) 
 -- porque tenia que buscar por pais y por fecha en unas tablas grandes.
@@ -11,15 +10,16 @@ FROM pedidos ped
 JOIN usuarios u ON ped.usuario_id = u.id 
 JOIN pedido_peliculas pp ON ped.id = pp.pedido_id 
 JOIN peliculas p ON pp.pelicula_id = p.id 
-WHERE EXTRACT(YEAR FROM ped.fecha_pago) = 2026 
-  AND u.pais = 'Espana' 
+WHERE ped.fecha_pago >= '2026-01-01' AND ped.fecha_pago < '2027-01-01'
+  AND u.pais = 'España'
   AND ped.fecha_pago IS NOT NULL;
 
 -- 2. Crear indices
 -- Para arreglarlo, he creado un indice para buscar rapido por pais en usuarios
 CREATE INDEX idx_usuarios_pais ON usuarios(pais);
 
--- He creado otro indice para la fecha de pago en los pedidos
+-- He creado el indice normal para la fecha de pago en los pedidos
+-- Como ahora la consulta es "sargable" (no usa funciones como EXTRACT), este indice funciona perfecto.
 CREATE INDEX idx_pedidos_fecha_pago ON pedidos(fecha_pago);
 
 -- Y un indice compuesto por si acaso se busca por usuario y fecha a la vez
@@ -35,6 +35,6 @@ FROM pedidos ped
 JOIN usuarios u ON ped.usuario_id = u.id 
 JOIN pedido_peliculas pp ON ped.id = pp.pedido_id 
 JOIN peliculas p ON pp.pelicula_id = p.id 
-WHERE EXTRACT(YEAR FROM ped.fecha_pago) = 2026 
-  AND u.pais = 'Espana' 
+WHERE ped.fecha_pago >= '2026-01-01' AND ped.fecha_pago < '2027-01-01'
+  AND u.pais = 'España'
   AND ped.fecha_pago IS NOT NULL;

@@ -1,4 +1,6 @@
--- Borramos las tablas si ya existen para que no de fallo al reiniciar
+-- ============================================================================
+-- Borramos todo si ya existe para que no de fallo al reiniciar
+-- ============================================================================
 DROP TABLE IF EXISTS votos CASCADE;
 DROP TABLE IF EXISTS pedido_peliculas CASCADE;
 DROP TABLE IF EXISTS pedidos CASCADE;
@@ -8,8 +10,16 @@ DROP TABLE IF EXISTS actores CASCADE;
 DROP TABLE IF EXISTS directores CASCADE;
 DROP TABLE IF EXISTS usuarios CASCADE;
 
--- 1. CREACION DE TABLAS
+-- Borramos las funciones y procedimientos (SPs) por si cambiamos su estructura
+DROP FUNCTION IF EXISTS actualizar_stock_carrito() CASCADE;
+DROP FUNCTION IF EXISTS actualizar_total_pedido() CASCADE;
+DROP FUNCTION IF EXISTS descontar_saldo_pago() CASCADE;
+DROP FUNCTION IF EXISTS sp_valoracion_media(INT) CASCADE;
+DROP FUNCTION IF EXISTS sp_pagar_carrito(INT) CASCADE;
 
+-- ============================================================================
+-- 1. CREACION DE TABLAS
+-- ============================================================================
 CREATE TABLE usuarios (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -69,7 +79,9 @@ CREATE TABLE votos (
     PRIMARY KEY (usuario_id, pelicula_id)
 );
 
+-- ============================================================================
 -- 2. TRIGGERS
+-- ============================================================================
 
 -- Trigger 1: Para actualizar el stock al tocar el carrito
 CREATE OR REPLACE FUNCTION actualizar_stock_carrito() RETURNS TRIGGER AS $$
@@ -95,7 +107,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_actualizar_stock AFTER INSERT OR DELETE ON pedido_peliculas FOR EACH ROW EXECUTE FUNCTION actualizar_stock_carrito();
+CREATE TRIGGER trg_actualizar_stock
+AFTER INSERT OR DELETE ON pedido_peliculas
+FOR EACH ROW EXECUTE FUNCTION actualizar_stock_carrito();
 
 
 -- Trigger 2: Para recalcular lo que cuesta el pedido en total
@@ -123,7 +137,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_calcular_total_pedido AFTER INSERT OR UPDATE OR DELETE ON pedido_peliculas FOR EACH ROW EXECUTE FUNCTION actualizar_total_pedido();
+CREATE TRIGGER trg_calcular_total_pedido
+AFTER INSERT OR UPDATE OR DELETE ON pedido_peliculas
+FOR EACH ROW EXECUTE FUNCTION actualizar_total_pedido();
 
 
 -- Trigger 3: Para quitarle el dinero al usuario al pagar
@@ -145,10 +161,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_descontar_saldo BEFORE UPDATE OF fecha_pago ON pedidos FOR EACH ROW EXECUTE FUNCTION descontar_saldo_pago();
+CREATE TRIGGER trg_descontar_saldo
+BEFORE UPDATE OF fecha_pago ON pedidos
+FOR EACH ROW EXECUTE FUNCTION descontar_saldo_pago();
 
-
+-- ============================================================================
 -- 3. PROCEDIMIENTOS ALMACENADOS
+-- ============================================================================
 
 -- Para sacar la nota media de una pelicula
 CREATE OR REPLACE FUNCTION sp_valoracion_media(id_peli INT) RETURNS NUMERIC AS $$
@@ -162,6 +181,7 @@ BEGIN
     RETURN ROUND(media, 2);
 END;
 $$ LANGUAGE plpgsql;
+
 
 -- Para cobrar el carrito que esta abierto
 CREATE OR REPLACE FUNCTION sp_pagar_carrito(id_usu INT) RETURNS INT AS $$

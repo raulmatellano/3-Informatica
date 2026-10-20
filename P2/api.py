@@ -2,6 +2,7 @@ import os
 import hashlib
 import hmac
 import base64
+from datetime import datetime
 from quart import Quart, request, jsonify
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
@@ -114,35 +115,57 @@ async def meter_carrito(user_id):
     cant = datos.get('cantidad', 1)
     
     async with engine.begin() as conn:
-        # Buscamos si tiene el carrito abierto (fecha NULL)
-        res = await conn.execute(
-            text("SELECT id FROM pedidos WHERE usuario_id = :u AND fecha_pago IS NULL"), 
-            {"u": user_id}
-        )
-        pedido_id = res.scalar()
-        
-        # Si no lo tiene, se lo creamos
-        if not pedido_id:
-            res2 = await conn.execute(
-                text("INSERT INTO pedidos (usuario_id) VALUES (:u) RETURNING id"),
-                {"u": user_id}
+        # Hacemos todo de golpe con un solo execute usando WITH
+        sql = text("""
+            WITH carrito_abierto AS (
+                SELECT id FROM pedidos 
+                WHERE usuario_id = :u AND fecha_pago IS NULL
+            ),
+            carrito_nuevo AS (
+                INSERT INTO pedidos (usuario_id) 
+                SELECT :u WHERE NOT EXISTS (SELECT 1 FROM carrito_abierto)
+                RETURNING id
+            ),
+            carrito_final AS (
+                SELECT id FROM carrito_abierto 
+                UNION ALL 
+                SELECT id FROM carrito_nuevo
+            ),
+            peli_precio AS (
+                SELECT precio FROM peliculas WHERE id = :p
             )
-            pedido_id = res2.scalar()
-            
-        # Sacamos el precio de la peli
-        res3 = await conn.execute(
-            text("SELECT precio FROM peliculas WHERE id = :p"), 
-            {"p": id_peli}
-        )
-        precio = res3.scalar()
+            INSERT INTO pedido_peliculas (pedido_id, pelicula_id, cantidad, precio_unitario)
+            SELECT c.id, :p, :c, peli.precio
+            FROM carrito_final c, peli_precio peli
+        """)
         
-        # Lo metemos en el pedido (esto hace saltar los triggers)
-        await conn.execute(text("""
-            INSERT INTO pedido_peliculas (pedido_id, pelicula_id, cantidad, precio_unitario) 
-            VALUES (:ped, :pel, :c, :pre)
-        """), {"ped": pedido_id, "pel": id_peli, "c": cant, "pre": precio})
-        
+        await conn.execute(sql, {"u": user_id, "p": id_peli, "c": cant})
         return jsonify({"mensaje": "Peli metida al carrito"}), 201
+
+@app.route('/carrito/<int:user_id>/<int:id_peli>', methods=['DELETE'])
+async def quitar_del_carrito(user_id, id_peli):
+    user = comprobar_token(request.headers.get("Authorization"))
+    if not user:
+        return jsonify({"error": "No autorizado"}), 401
+        
+    async with engine.begin() as conn:
+        # Hacemos el borrado en un solo execute usando una subconsulta 
+        # para encontrar el ID del carrito que esta abierto (fecha_pago IS NULL)
+        sql = text("""
+            DELETE FROM pedido_peliculas 
+            WHERE pelicula_id = :p 
+            AND pedido_id = (
+                SELECT id FROM pedidos 
+                WHERE usuario_id = :u AND fecha_pago IS NULL
+            )
+        """)
+        
+        resultado = await conn.execute(sql, {"u": user_id, "p": id_peli})
+        
+        if resultado.rowcount == 0:
+            return jsonify({"error": "No tienes esta peli en el carrito o no hay carrito"}), 404
+            
+        return jsonify({"mensaje": "Peli quitada del carrito"}), 200
 
 @app.route('/carrito/<int:user_id>/pagar', methods=['POST'])
 async def pagar_pedido(user_id):
@@ -191,17 +214,13 @@ async def votar(id):
         return jsonify({"error": "Nota mala"}), 400
         
     async with engine.begin() as conn:
-        res = await conn.execute(
-            text("SELECT id FROM usuarios WHERE username = :u"), 
-            {"u": user}
-        )
-        user_id = res.scalar()
-        
         try:
-            await conn.execute(
-                text("INSERT INTO votos (usuario_id, pelicula_id, puntuacion) VALUES (:u, :p, :pts)"),
-                {"u": user_id, "p": id, "pts": puntos}
-            )
+            # Todo en un solo execute combinando el SELECT de usuario con el INSERT
+            sql = text("""
+                INSERT INTO votos (usuario_id, pelicula_id, puntuacion) 
+                SELECT id, :p, :pts FROM usuarios WHERE username = :u
+            """)
+            await conn.execute(sql, {"u": user, "p": id, "pts": puntos})
             return jsonify({"mensaje": "Votado"}), 201
         except:
             return jsonify({"error": "Ya votaste esto"}), 400
@@ -222,12 +241,17 @@ async def reporte_ventas(anio, pais):
         JOIN usuarios u ON ped.usuario_id = u.id 
         JOIN pedido_peliculas pp ON ped.id = pp.pedido_id 
         JOIN peliculas p ON pp.pelicula_id = p.id 
-        WHERE EXTRACT(YEAR FROM ped.fecha_pago) = :anio 
+        WHERE ped.fecha_pago >= :inicio 
+          AND ped.fecha_pago < :fin
           AND u.pais = :pais 
-          AND ped.fecha_pago IS NOT NULL
     """
+    
+    # Creamos objetos datetime para pasarlos como parametros limpios a asyncpg
+    inicio_anio = datetime(anio, 1, 1)
+    fin_anio = datetime(anio + 1, 1, 1)
+    
     async with engine.connect() as conn:
-        res = await conn.execute(text(query), {"anio": anio, "pais": pais})
+        res = await conn.execute(text(query), {"inicio": inicio_anio, "fin": fin_anio, "pais": pais})
         ventas = []
         for f in res:
             ventas.append({

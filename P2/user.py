@@ -3,10 +3,8 @@ import hashlib
 import hmac
 import base64
 from quart import Quart, request, jsonify
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy import Column, Integer, String, Numeric
-from sqlalchemy.future import select
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
 
 app = Quart(__name__)
 
@@ -15,17 +13,6 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://alumnodb:1234@loc
 SECRET_KEY = os.getenv("SECRET_KEY", "clave_super_secreta_para_la_practica")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
-SessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
-Base = declarative_base()
-
-# Modelo para SQLAlchemy ORM
-class Usuario(Base):
-    __tablename__ = 'usuarios'
-    id = Column(Integer, primary_key=True)
-    username = Column(String(50), unique=True, nullable=False)
-    password_hash = Column(String(256), nullable=False)
-    pais = Column(String(50), nullable=False)
-    saldo = Column(Numeric(10, 2), default=0.00)
 
 def hacer_hash(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -61,28 +48,30 @@ async def registro():
         return jsonify({"error": "Faltan datos"}), 400
         
     saldo_empiece = datos.get('saldo', 0.0)
-
-    async with SessionLocal() as session:
-        # Miramos si ya hay alguien con ese nombre
-        stmt = select(Usuario).where(Usuario.username == datos['username'])
-        resultado = await session.execute(stmt)
-        if resultado.scalars().first():
+    hash_pass = hacer_hash(datos['password'])
+    
+    async with engine.begin() as conn:
+        # Insertamos el nuevo usuario controlando si ya existe con ON CONFLICT
+        consulta = text("""
+            INSERT INTO usuarios (username, password_hash, pais, saldo) 
+            VALUES (:u, :p, :pais, :s) 
+            ON CONFLICT (username) DO NOTHING 
+            RETURNING id
+        """)
+        resultado = await conn.execute(consulta, {
+            "u": datos['username'],
+            "p": hash_pass,
+            "pais": datos['pais'],
+            "s": saldo_empiece
+        })
+        
+        nuevo_id = resultado.scalar()
+        
+        if not nuevo_id:
             return jsonify({"error": "Ese usuario ya esta registrado"}), 409
             
-        nuevo_usuario = Usuario(
-            username=datos['username'],
-            password_hash=hacer_hash(datos['password']),
-            pais=datos['pais'],
-            saldo=saldo_empiece
-        )
-        
-        session.add(nuevo_usuario)
-        await session.commit()
-        await session.refresh(nuevo_usuario)
-        
-        mi_token = crear_token(nuevo_usuario.username)
-        return jsonify({"user_id": nuevo_usuario.id, "token": mi_token}), 201
-
+        mi_token = crear_token(datos['username'])
+        return jsonify({"user_id": nuevo_id, "token": mi_token}), 201
 
 @app.route('/user/login', methods=['POST'])
 async def login():
@@ -91,21 +80,22 @@ async def login():
     if not datos or 'username' not in datos or 'password' not in datos:
         return jsonify({"error": "Faltan datos"}), 400
 
-    async with SessionLocal() as session:
-        stmt = select(Usuario).where(Usuario.username == datos['username'])
-        resultado = await session.execute(stmt)
-        usuario = resultado.scalars().first()
-
+    async with engine.connect() as conn:
+        # Buscamos el usuario
+        consulta = text("SELECT id, password_hash FROM usuarios WHERE username = :u")
+        resultado = await conn.execute(consulta, {"u": datos['username']})
+        usuario = resultado.fetchone()
+        
         if not usuario:
             return jsonify({"error": "El usuario no existe"}), 401
             
         hash_pass = hacer_hash(datos['password'])
+        
         if usuario.password_hash != hash_pass:
             return jsonify({"error": "La contrasena esta mal"}), 401
-
-        mi_token = crear_token(usuario.username)
+            
+        mi_token = crear_token(datos['username'])
         return jsonify({"user_id": usuario.id, "token": mi_token}), 200
-
 
 @app.route('/user/logout', methods=['POST'])
 async def logout():
@@ -115,7 +105,6 @@ async def logout():
         
     return jsonify({"mensaje": "Sesion cerrada"}), 200
 
-
 @app.route('/user/<username>', methods=['DELETE'])
 async def borrar(username):
     user = comprobar_token(request.headers.get("Authorization"))
@@ -124,18 +113,16 @@ async def borrar(username):
     if not user or user != username:
         return jsonify({"error": "No puedes borrar esto"}), 401
 
-    async with SessionLocal() as session:
-        stmt = select(Usuario).where(Usuario.username == username)
-        resultado = await session.execute(stmt)
-        usuario = resultado.scalars().first()
-
-        if not usuario:
+    async with engine.begin() as conn:
+        # Borramos el usuario directamente
+        consulta = text("DELETE FROM usuarios WHERE username = :u")
+        resultado = await conn.execute(consulta, {"u": username})
+        
+        # Si rowcount es 0, no existía nada para borrar
+        if resultado.rowcount == 0:
             return jsonify({"error": "No existe"}), 404
-
-        await session.delete(usuario)
-        await session.commit()
+            
         return jsonify({"mensaje": "Borrado ok"}), 200
-
 
 @app.route('/user/<username>/saldo', methods=['PATCH'])
 async def meter_saldo(username):
@@ -148,19 +135,25 @@ async def meter_saldo(username):
     if not datos or 'cantidad' not in datos:
         return jsonify({"error": "Pon la cantidad"}), 400
 
-    async with SessionLocal() as session:
-        stmt = select(Usuario).where(Usuario.username == username)
-        resultado = await session.execute(stmt)
-        usuario = resultado.scalars().first()
-
-        if not usuario:
+    async with engine.begin() as conn:
+        # Sumamos el saldo directamente en la BD y devolvemos el nuevo valor
+        consulta = text("""
+            UPDATE usuarios 
+            SET saldo = saldo + :cant 
+            WHERE username = :u 
+            RETURNING saldo
+        """)
+        resultado = await conn.execute(consulta, {
+            "cant": float(datos['cantidad']), 
+            "u": username
+        })
+        fila = resultado.fetchone()
+        
+        if not fila:
             return jsonify({"error": "No existe"}), 404
-
-        # Sumamos el saldo
-        usuario.saldo = float(usuario.saldo) + float(datos['cantidad'])
-        await session.commit()
-
-        return jsonify({"saldo": usuario.saldo}), 200
+            
+        nuevo_saldo = float(fila.saldo)
+        return jsonify({"saldo": nuevo_saldo}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5050)
