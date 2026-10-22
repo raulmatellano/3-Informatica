@@ -18,7 +18,6 @@ print("=========================================")
 print("          PRUEBAS VIDEOCLUB P2           ")
 print("=========================================")
 
-# --- USUARIOS ---
 datos_registro = {"username": "alumno_uam", "password": "123", "pais": "España", "saldo": 50.0}
 
 r = requests.put(f"{URL_USER}/user", json=datos_registro)
@@ -52,7 +51,6 @@ test("7", "Logout bien", r, 200)
 r = requests.delete(f"{URL_USER}/user/alumno_uam")
 test("8", "Borrar cuenta sin token", r, 401)
 
-# --- PELICULAS Y PEDIDOS ---
 peli = {"titulo": "Prueba", "director_id": 1, "anio": 2026, "precio": 10.0, "stock": 5}
 r = requests.put(f"{URL_API}/pelicula", json=peli)
 test("9", "Crear peli sin token", r, 401)
@@ -83,7 +81,6 @@ test("16", "Meter al carrito sin stock suficiente", r, 500)
 r = requests.post(f"{URL_API}/carrito/{user_id}/pagar", headers=headers)
 test("17", "Pagar el carrito", r, 200)
 
-# Le restamos 60 al saldo para dejarlo en 0.5 (lo suficiente para que no pete el CHECK de BD, pero falle al pagar la peli de 10)
 requests.patch(f"{URL_USER}/user/alumno_uam/saldo", json={"cantidad": -60}, headers=headers)
 requests.post(f"{URL_API}/carrito/{user_id}", json={"pelicula_id": pelicula_id, "cantidad": 1}, headers=headers)
 r = requests.post(f"{URL_API}/carrito/{user_id}/pagar", headers=headers)
@@ -104,7 +101,6 @@ test("22", "Ver nota media", r, 200)
 r = requests.get(f"{URL_API}/ventas/2026/España")
 test("23", "Ver listado de ventas", r, 200)
 
-# --- LIMPIEZA FINAL ---
 r = requests.delete(f"{URL_API}/pelicula/{pelicula_id}", headers=headers)
 test("24", "Borrar peli", r, 200)
 

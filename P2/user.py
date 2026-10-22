@@ -8,7 +8,6 @@ from sqlalchemy import text
 
 app = Quart(__name__)
 
-# Configuracion basica
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://alumnodb:1234@localhost:9999/si1")
 SECRET_KEY = os.getenv("SECRET_KEY", "clave_super_secreta_para_la_practica")
 
@@ -18,7 +17,6 @@ def hacer_hash(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def crear_token(username):
-    # Calculo la firma y la junto con el nombre de usuario
     firma = hmac.new(SECRET_KEY.encode(), username.encode(), hashlib.sha256).hexdigest()
     token_str = username + ":" + firma
     return base64.b64encode(token_str.encode()).decode()
@@ -27,12 +25,10 @@ def comprobar_token(cabecera):
     if not cabecera or not cabecera.startswith("Bearer "):
         return None
     try:
-        # Quitamos la palabra "Bearer "
         token_b64 = cabecera.split(" ")[1]
         token_str = base64.b64decode(token_b64).decode()
         username, firma_recibida = token_str.split(":")
         
-        # Comprobamos que no se ha modificado
         firma_buena = hmac.new(SECRET_KEY.encode(), username.encode(), hashlib.sha256).hexdigest()
         if firma_buena == firma_recibida:
             return username
@@ -51,7 +47,6 @@ async def registro():
     hash_pass = hacer_hash(datos['password'])
     
     async with engine.begin() as conn:
-        # Insertamos el nuevo usuario controlando si ya existe con ON CONFLICT
         consulta = text("""
             INSERT INTO usuarios (username, password_hash, pais, saldo) 
             VALUES (:u, :p, :pais, :s) 
@@ -81,7 +76,6 @@ async def login():
         return jsonify({"error": "Faltan datos"}), 400
 
     async with engine.connect() as conn:
-        # Buscamos el usuario
         consulta = text("SELECT id, password_hash FROM usuarios WHERE username = :u")
         resultado = await conn.execute(consulta, {"u": datos['username']})
         usuario = resultado.fetchone()
@@ -109,16 +103,13 @@ async def logout():
 async def borrar(username):
     user = comprobar_token(request.headers.get("Authorization"))
     
-    # Solo puedes borrar tu propia cuenta
     if not user or user != username:
         return jsonify({"error": "No puedes borrar esto"}), 401
 
     async with engine.begin() as conn:
-        # Borramos el usuario directamente
         consulta = text("DELETE FROM usuarios WHERE username = :u")
         resultado = await conn.execute(consulta, {"u": username})
         
-        # Si rowcount es 0, no existía nada para borrar
         if resultado.rowcount == 0:
             return jsonify({"error": "No existe"}), 404
             
@@ -136,7 +127,6 @@ async def meter_saldo(username):
         return jsonify({"error": "Pon la cantidad"}), 400
 
     async with engine.begin() as conn:
-        # Sumamos el saldo directamente en la BD y devolvemos el nuevo valor
         consulta = text("""
             UPDATE usuarios 
             SET saldo = saldo + :cant 

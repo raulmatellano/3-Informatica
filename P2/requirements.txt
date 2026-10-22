@@ -1,14 +1,7 @@
-# Librerias para los microservicios y tests
-
-# Para la API
 Quart>=0.19.0
 Hypercorn>=0.16.0
-
-# Para conectarnos a la base de datos
 SQLAlchemy>=2.0.0
 greenlet>=3.0.0
 asyncpg>=0.29.0
-
-# Para el cliente de pruebas
 requests>=2.31.0
 aiofiles>=24.0.0

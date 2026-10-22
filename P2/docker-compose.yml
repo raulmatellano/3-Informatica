@@ -1,11 +1,6 @@
-# ============================================================================
-# PRÁCTICA 2: SISTEMAS INFORMÁTICOS
-# ARCHIVO: docker-compose.yml (Orquestación completa)
-# ============================================================================
 version: "3.8"
 
 services:
-  # 1. Contenedor de la Base de Datos
   db:
     image: postgres:15-alpine
     container_name: videoclub_db
@@ -21,7 +16,6 @@ services:
       - ./populate.sql:/docker-entrypoint-initdb.d/02_populate.sql:ro
       - postgres_data:/var/lib/postgresql/data
 
-  # 2. Contenedor del Microservicio de Usuarios
   user_api:
     build: .
     container_name: videoclub_user_api
@@ -29,13 +23,11 @@ services:
     ports:
       - "5050:5050"
     environment:
-      # Se conecta a la BD usando el nombre del contenedor 'db'
       DATABASE_URL: "postgresql+asyncpg://alumnodb:1234@db:5432/si1"
       SECRET_KEY: "clave_super_secreta_para_la_practica"
     depends_on:
       - db
 
-  # 3. Contenedor del Microservicio Principal
   main_api:
     build: .
     container_name: videoclub_main_api

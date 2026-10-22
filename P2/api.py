@@ -68,7 +68,6 @@ async def buscador():
     anio = request.args.get('anio')
     
     async with engine.connect() as conn:
-        # El STRING_AGG es para juntar todos los actores en una cadena
         sql = """
             SELECT p.id, p.titulo, d.nombre AS director, p.anio, p.precio, p.stock,
                    STRING_AGG(a.nombre, ', ') AS actores
@@ -115,7 +114,6 @@ async def meter_carrito(user_id):
     cant = datos.get('cantidad', 1)
     
     async with engine.begin() as conn:
-        # Hacemos todo de golpe con un solo execute usando WITH
         sql = text("""
             WITH carrito_abierto AS (
                 SELECT id FROM pedidos 
@@ -149,8 +147,6 @@ async def quitar_del_carrito(user_id, id_peli):
         return jsonify({"error": "No autorizado"}), 401
         
     async with engine.begin() as conn:
-        # Hacemos el borrado en un solo execute usando una subconsulta 
-        # para encontrar el ID del carrito que esta abierto (fecha_pago IS NULL)
         sql = text("""
             DELETE FROM pedido_peliculas 
             WHERE pelicula_id = :p 
@@ -175,7 +171,6 @@ async def pagar_pedido(user_id):
         
     async with engine.begin() as conn:
         try:
-            # Llamamos al procedimiento
             await conn.execute(text("SELECT sp_pagar_carrito(:u)"), {"u": user_id})
             return jsonify({"mensaje": "Pagado ok"}), 200
         except Exception as e:
@@ -215,7 +210,6 @@ async def votar(id):
         
     async with engine.begin() as conn:
         try:
-            # Todo en un solo execute combinando el SELECT de usuario con el INSERT
             sql = text("""
                 INSERT INTO votos (usuario_id, pelicula_id, puntuacion) 
                 SELECT id, :p, :pts FROM usuarios WHERE username = :u
@@ -234,7 +228,6 @@ async def nota_media(id):
 
 @app.route('/ventas/<int:anio>/<pais>', methods=['GET'])
 async def reporte_ventas(anio, pais):
-    # Hacemos JOIN de todo para sacar el historial
     query = """
         SELECT u.username, u.pais, p.titulo, pp.cantidad, pp.precio_unitario, ped.fecha_pago 
         FROM pedidos ped 
@@ -246,7 +239,6 @@ async def reporte_ventas(anio, pais):
           AND u.pais = :pais 
     """
     
-    # Creamos objetos datetime para pasarlos como parametros limpios a asyncpg
     inicio_anio = datetime(anio, 1, 1)
     fin_anio = datetime(anio + 1, 1, 1)
     
