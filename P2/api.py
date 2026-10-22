@@ -14,6 +14,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "clave_super_secreta_para_la_practica")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 
+# Comprueba que el token Bearer sea valido y saca el usuario
 def comprobar_token(cabecera):
     if not cabecera or not cabecera.startswith("Bearer "):
         return None
@@ -29,6 +30,7 @@ def comprobar_token(cabecera):
         pass
     return None
 
+# Añade una pelicula nueva a la base de datos
 @app.route('/pelicula', methods=['PUT'])
 async def nueva_peli():
     user = comprobar_token(request.headers.get("Authorization"))
@@ -52,6 +54,7 @@ async def nueva_peli():
         nuevo_id = resultado.scalar()
         return jsonify({"pelicula_id": nuevo_id}), 201
 
+# Borra una pelicula por su id
 @app.route('/pelicula/<int:id>', methods=['DELETE'])
 async def quitar_peli(id):
     user = comprobar_token(request.headers.get("Authorization"))
@@ -62,6 +65,7 @@ async def quitar_peli(id):
         await conn.execute(text("DELETE FROM peliculas WHERE id = :id"), {"id": id})
         return jsonify({"mensaje": "Borrada"}), 200
 
+# Busca peliculas filtrando por director o año
 @app.route('/peliculas', methods=['GET'])
 async def buscador():
     dir_id = request.args.get('director_id')
@@ -103,6 +107,7 @@ async def buscador():
             
         return jsonify(lista), 200
 
+# Mete una pelicula al carrito (si no hay pedido abierto, crea uno)
 @app.route('/carrito/<int:user_id>', methods=['POST'])
 async def meter_carrito(user_id):
     user = comprobar_token(request.headers.get("Authorization"))
@@ -140,6 +145,7 @@ async def meter_carrito(user_id):
         await conn.execute(sql, {"u": user_id, "p": id_peli, "c": cant})
         return jsonify({"mensaje": "Peli metida al carrito"}), 201
 
+# Saca una pelicula del carrito del usuario
 @app.route('/carrito/<int:user_id>/<int:id_peli>', methods=['DELETE'])
 async def quitar_del_carrito(user_id, id_peli):
     user = comprobar_token(request.headers.get("Authorization"))
@@ -163,6 +169,7 @@ async def quitar_del_carrito(user_id, id_peli):
             
         return jsonify({"mensaje": "Peli quitada del carrito"}), 200
 
+# Paga el carrito del usuario usando el procedimiento de la BD
 @app.route('/carrito/<int:user_id>/pagar', methods=['POST'])
 async def pagar_pedido(user_id):
     user = comprobar_token(request.headers.get("Authorization"))
@@ -176,6 +183,7 @@ async def pagar_pedido(user_id):
         except Exception as e:
             return jsonify({"error": str(e)}), 402
 
+# Devuelve los pedidos que ha hecho el usuario
 @app.route('/pedidos/<int:user_id>', methods=['GET'])
 async def ver_mis_pedidos(user_id):
     user = comprobar_token(request.headers.get("Authorization"))
@@ -196,6 +204,7 @@ async def ver_mis_pedidos(user_id):
             })
         return jsonify(lista), 200
 
+# Guarda el voto de un usuario a una pelicula (de 0 a 10)
 @app.route('/pelicula/<int:id>/voto', methods=['POST'])
 async def votar(id):
     user = comprobar_token(request.headers.get("Authorization"))
@@ -219,6 +228,7 @@ async def votar(id):
         except:
             return jsonify({"error": "Ya votaste esto"}), 400
 
+# Pide a la BD la nota media de la pelicula
 @app.route('/pelicula/<int:id>/puntuacion', methods=['GET'])
 async def nota_media(id):
     async with engine.connect() as conn:
@@ -226,6 +236,7 @@ async def nota_media(id):
         media = res.scalar()
         return jsonify({"valoracion_media": float(media)}), 200
 
+# Saca el listado de ventas filtrado por año y por pais
 @app.route('/ventas/<int:anio>/<pais>', methods=['GET'])
 async def reporte_ventas(anio, pais):
     query = """

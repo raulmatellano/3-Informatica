@@ -68,6 +68,7 @@ CREATE TABLE votos (
     PRIMARY KEY (usuario_id, pelicula_id)
 );
 
+-- Controla el stock: resta cuando metemos al carrito y suma si lo borramos
 CREATE OR REPLACE FUNCTION actualizar_stock_carrito() RETURNS TRIGGER AS $$
 DECLARE
     stock_actual INT;
@@ -93,6 +94,7 @@ CREATE TRIGGER trg_actualizar_stock
 AFTER INSERT OR DELETE ON pedido_peliculas
 FOR EACH ROW EXECUTE FUNCTION actualizar_stock_carrito();
 
+-- Recalcula el total del pedido sumando todas las pelis que tiene
 CREATE OR REPLACE FUNCTION actualizar_total_pedido() RETURNS TRIGGER AS $$
 DECLARE
     id_ped INT;
@@ -119,6 +121,7 @@ CREATE TRIGGER trg_calcular_total_pedido
 AFTER INSERT OR UPDATE OR DELETE ON pedido_peliculas
 FOR EACH ROW EXECUTE FUNCTION actualizar_total_pedido();
 
+-- Al pagar el pedido comprueba que el usuario tenga saldo y se lo resta
 CREATE OR REPLACE FUNCTION descontar_saldo_pago() RETURNS TRIGGER AS $$
 DECLARE
     saldo_usuario NUMERIC;
@@ -140,6 +143,7 @@ CREATE TRIGGER trg_descontar_saldo
 BEFORE UPDATE OF fecha_pago ON pedidos
 FOR EACH ROW EXECUTE FUNCTION descontar_saldo_pago();
 
+-- Calcula la media de las puntuaciones que tiene una pelicula
 CREATE OR REPLACE FUNCTION sp_valoracion_media(id_peli INT) RETURNS NUMERIC AS $$
 DECLARE
     media NUMERIC;
@@ -152,6 +156,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Pone fecha de pago al carrito abierto para cobrarlo
 CREATE OR REPLACE FUNCTION sp_pagar_carrito(id_usu INT) RETURNS INT AS $$
 DECLARE
     id_ped INT;

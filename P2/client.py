@@ -7,6 +7,7 @@ token = ""
 user_id = 0
 pelicula_id = 0
 
+# Comprueba el resultado de una peticion contra el codigo esperado
 def test(num, desc, res, esperado):
     if res.status_code == esperado:
         print(f"OK - Prueba {num}: {desc}")

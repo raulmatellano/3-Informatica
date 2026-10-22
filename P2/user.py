@@ -13,14 +13,17 @@ SECRET_KEY = os.getenv("SECRET_KEY", "clave_super_secreta_para_la_practica")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 
+# Pasa la contraseña a sha256
 def hacer_hash(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+# Genera el token con el usuario y la firma en base64
 def crear_token(username):
     firma = hmac.new(SECRET_KEY.encode(), username.encode(), hashlib.sha256).hexdigest()
     token_str = username + ":" + firma
     return base64.b64encode(token_str.encode()).decode()
 
+# Mira si el token es valido y devuelve el usuario
 def comprobar_token(cabecera):
     if not cabecera or not cabecera.startswith("Bearer "):
         return None
@@ -36,6 +39,7 @@ def comprobar_token(cabecera):
         pass
     return None
 
+# Registra un usuario nuevo en la BD con su contraseña en hash
 @app.route('/user', methods=['PUT'])
 async def registro():
     datos = await request.get_json()
@@ -68,6 +72,7 @@ async def registro():
         mi_token = crear_token(datos['username'])
         return jsonify({"user_id": nuevo_id, "token": mi_token}), 201
 
+# Comprueba el login y si es correcto devuelve el token
 @app.route('/user/login', methods=['POST'])
 async def login():
     datos = await request.get_json()
@@ -91,6 +96,7 @@ async def login():
         mi_token = crear_token(datos['username'])
         return jsonify({"user_id": usuario.id, "token": mi_token}), 200
 
+# Cierra la sesion del usuario
 @app.route('/user/logout', methods=['POST'])
 async def logout():
     user = comprobar_token(request.headers.get("Authorization"))
@@ -99,6 +105,7 @@ async def logout():
         
     return jsonify({"mensaje": "Sesion cerrada"}), 200
 
+# Borra el usuario si el token coincide con el username
 @app.route('/user/<username>', methods=['DELETE'])
 async def borrar(username):
     user = comprobar_token(request.headers.get("Authorization"))
@@ -115,6 +122,7 @@ async def borrar(username):
             
         return jsonify({"mensaje": "Borrado ok"}), 200
 
+# Añade saldo a la cuenta del usuario
 @app.route('/user/<username>/saldo', methods=['PATCH'])
 async def meter_saldo(username):
     user = comprobar_token(request.headers.get("Authorization"))
