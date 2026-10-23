@@ -15,9 +15,7 @@ def test(num, desc, res, esperado):
         print(f"FALLO - Prueba {num}: {desc} (Dio {res.status_code}, esperaba {esperado})")
         print(f"Info extra: {res.text}")
 
-print("=========================================")
-print("          PRUEBAS VIDEOCLUB P2           ")
-print("=========================================")
+print("PRUEBAS VIDEOCLUB P2")
 
 datos_registro = {"username": "alumno_uam", "password": "123", "pais": "España", "saldo": 50.0}
 
@@ -108,6 +106,4 @@ test("24", "Borrar peli", r, 200)
 r = requests.delete(f"{URL_USER}/user/alumno_uam", headers=headers)
 test("25", "Borrar usuario", r, 200)
 
-print("=========================================")
-print("            FIN PRUEBAS                  ")
-print("=========================================")
+print("FIN PRUEBAS")
