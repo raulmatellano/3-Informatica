@@ -15,7 +15,7 @@ def test(num, desc, res, esperado):
         print(f"FALLO - Prueba {num}: {desc} (Dio {res.status_code}, esperaba {esperado})")
         print(f"Info extra: {res.text}")
 
-print("PRUEBAS VIDEOCLUB P2")
+print("PRUEBAS")
 
 datos_registro = {"username": "alumno_uam", "password": "123", "pais": "España", "saldo": 50.0}
 
