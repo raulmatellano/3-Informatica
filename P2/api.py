@@ -10,7 +10,7 @@ from sqlalchemy import text
 app = Quart(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://alumnodb:1234@localhost:9999/si1")
-SECRET_KEY = os.getenv("SECRET_KEY", "clave_super_secreta_para_la_practica")
+SECRET_KEY = os.getenv("SECRET_KEY", "clave")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 
