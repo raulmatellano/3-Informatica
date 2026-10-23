@@ -24,7 +24,7 @@ services:
       - "5050:5050"
     environment:
       DATABASE_URL: "postgresql+asyncpg://alumnodb:1234@db:5432/si1"
-      SECRET_KEY: "clave_super_secreta_para_la_practica"
+      SECRET_KEY: "clave"
     depends_on:
       - db
 
@@ -36,7 +36,7 @@ services:
       - "5051:5051"
     environment:
       DATABASE_URL: "postgresql+asyncpg://alumnodb:1234@db:5432/si1"
-      SECRET_KEY: "clave_super_secreta_para_la_practica"
+      SECRET_KEY: "clave"
     depends_on:
       - db
 
