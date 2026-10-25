@@ -218,7 +218,8 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
             -srcMac: MAC origen de la trama Ethernet que se ha recibido
         Retorno: Ninguno
     '''
-    
+    if len(data) < 28 or data[0:ARP_HLEN] != ARPHeader:
+        return
     opcode = struct.unpack('!H', data[6:8])[0]
     if opcode == 1:
         processARPRequest(data, srcMac)
