@@ -1,0 +1,47 @@
+====================================================================
+SIMULACRO DE EXAMEN 6 - INSPECCIÓN DE PAYLOAD Y AUTO-RESPUESTA
+====================================================================
+
+--- ENUNCIADO DEL PROFESOR ---
+"Modifique la función de recepción del protocolo EthMsg (ethmsg.py) para que actúe 
+como un bot de respuesta automática.
+Si el mensaje de texto decodificado es EXACTAMENTE la palabra '!PING', el programa 
+no debe imprimir el mensaje por pantalla. En su lugar, debe invocar automáticamente 
+a sendEthMsg para devolver un mensaje que diga '!PONG'."
+
+====================================================================
+RESOLUCIÓN: Modificación en process_ethMsg_frame (ethmsg.py)
+====================================================================
+Explicación: No modificamos bytes de cabeceras, solo miramos el contenido (texto_legible) 
+una vez decodificado e interceptamos la lógica de impresión.
+
+--- CÓDIGO ORIGINAL ---
+    # ...
+    try:
+        texto_legible = texto_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        texto_legible = "<Error decodificando mensaje>"
+        
+    mac_origen_str = ':'.join(['{:02X}'.format(b) for b in srcMac])
+    print(f"[{segundos}.{microsegundos}] {mac_origen_str}: {texto_legible}")
+
+--- CÓDIGO NUEVO ---
+    # ...
+    try:
+        texto_legible = texto_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        texto_legible = "<Error decodificando mensaje>"
+        
+    mac_origen_str = ':'.join(['{:02X}'.format(b) for b in srcMac])
+    
+    # [NUEVO] Interceptamos el mensaje
+    if texto_legible == "!PING":
+        print(f"[*] Se ha recibido un !PING de {mac_origen_str}. Autocontestando...")
+        # Importante: Como sendEthMsg envía en broadcast por defecto, 
+        # esto funcionará automáticamente respondiendo a toda la red.
+        # (Si en un examen previo te hicieron implementar envío Unicast, 
+        # aquí se lo mandarías solo a la srcMac).
+        sendEthMsg("!PONG")
+    else:
+        # Comportamiento normal si no es un !PING
+        print(f"[{segundos}.{microsegundos}] {mac_origen_str}: {texto_legible}")

@@ -1,0 +1,60 @@
+====================================================================
+SIMULACRO DE EXAMEN 5 - AÑADIR UN CHECKSUM AL FINAL (TRAILER)
+====================================================================
+
+--- ENUNCIADO DEL PROFESOR ---
+"Para garantizar la integridad de los mensajes en EthMsg, añada un byte de control 
+(Checksum) AL FINAL de la trama, justo después del texto del mensaje.
+El valor de este byte siempre debe ser 0xFF.
+Al recibir un mensaje, compruebe que el byte que va justo después del texto es 0xFF. 
+Si no lo es, descarte el mensaje por estar corrupto."
+
+====================================================================
+MODIFICACIÓN 1: Función de envío (sendEthMsg)
+====================================================================
+Explicación: En lugar de sumar cosas a la variable 'cabecera', las sumamos al final.
+
+--- CÓDIGO ORIGINAL ---
+    cabecera_longitud = struct.pack('!H', longitud)
+    payload = cabecera_longitud + message
+
+--- CÓDIGO NUEVO ---
+    cabecera_longitud = struct.pack('!H', longitud)
+    checksum = 0xFF
+    
+    # Empaquetamos el checksum en 1 byte ('!B')
+    byte_final = struct.pack('!B', checksum)
+    
+    # Ensamblamos: [Cabecera] + [Mensaje] + [Trailer]
+    payload = cabecera_longitud + message + byte_final
+
+
+====================================================================
+MODIFICACIÓN 2: Función de recepción (process_ethMsg_frame)
+====================================================================
+Explicación: Como la longitud del mensaje es variable, el índice donde se encuentra
+el checksum final también varía. Hay que calcularlo sumando 2 (la cabecera) + longitud.
+
+--- CÓDIGO ORIGINAL ---
+    longitud = struct.unpack('!H', data[0:2])[0]
+    texto_bytes = data[2:2+longitud]
+
+--- CÓDIGO NUEVO ---
+    longitud = struct.unpack('!H', data[0:2])[0]
+    
+    # Extraemos el texto normal
+    texto_bytes = data[2:2+longitud]
+    
+    # Calculamos dónde está el byte final
+    indice_checksum = 2 + longitud
+    
+    # Comprobamos si la trama es lo suficientemente larga para contener el checksum
+    if len(data) < (indice_checksum + 1):
+        return
+        
+    # Extraemos el checksum (1 byte)
+    checksum_recibido = struct.unpack('!B', data[indice_checksum : indice_checksum+1])[0]
+    
+    if checksum_recibido != 0xFF:
+        print("Mensaje corrupto descartado.")
+        return # Descartamos el paquete

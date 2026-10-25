@@ -1,0 +1,51 @@
+====================================================================
+SIMULACRO DE EXAMEN 3 - NÚMERO MÁGICO EN CABECERA (MAGIC NUMBER)
+====================================================================
+
+--- ENUNCIADO DEL PROFESOR ---
+"Para asegurar que los paquetes EthMsg recibidos provienen de clientes legítimos 
+y no son paquetes corruptos, vamos a añadir un 'Número Mágico' a la cabecera.
+Modifique EthMsg para que los 2 primeros bytes siempre contengan el valor hexadecimal 0xFACE.
+Los 2 bytes siguientes indicarán la longitud del mensaje.
+Al recibir un paquete, si los primeros 2 bytes no son 0xFACE, descarte el mensaje silenciosamente."
+
+====================================================================
+MODIFICACIÓN 1: Función de envío (sendEthMsg) en ethmsg.py
+====================================================================
+--- CÓDIGO ORIGINAL ---
+    longitud = len(message)
+    cabecera_longitud = struct.pack('!H', longitud)
+    payload = cabecera_longitud + message
+
+--- CÓDIGO NUEVO ---
+    longitud = len(message)
+    # 0xFACE es nuestro Magic Number constante
+    magic_number = 0xFACE 
+    
+    # Empaquetamos DOS Unsigned Shorts ('!HH') -> 2 bytes + 2 bytes
+    cabecera = struct.pack('!HH', magic_number, longitud)
+    payload = cabecera + message
+
+
+====================================================================
+MODIFICACIÓN 2: Función de recepción (process_ethMsg_frame)
+====================================================================
+--- CÓDIGO ORIGINAL ---
+    if len(data) < 2: return
+    longitud = struct.unpack('!H', data[0:2])[0]
+    texto_bytes = data[2:2+longitud]
+
+--- CÓDIGO NUEVO ---
+    # La cabecera ahora mide 4 bytes mínimos (2 Magic + 2 Longitud)
+    if len(data) < 4: 
+        return
+        
+    # Extraemos ambos valores usando la máscara '!HH'
+    magic_number, longitud = struct.unpack('!HH', data[0:4])
+    
+    # Comprobación de seguridad
+    if magic_number != 0xFACE:
+        return # Descartamos porque no tiene la firma correcta
+        
+    # El texto ahora empieza a partir del byte 4
+    texto_bytes = data[4:4+longitud]

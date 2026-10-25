@@ -1,0 +1,83 @@
+====================================================================
+SIMULACRO DE EXAMEN - MODIFICACIÓN DE CABECERAS Y BYTES
+====================================================================
+
+--- ENUNCIADO DEL PROFESOR ---
+"El protocolo EthMsg actual no es seguro. Para aprobar la práctica, debe modificar el código para añadir un byte de 'Prioridad' al inicio de todos los mensajes.
+La nueva cabecera debe ser: [1 byte de Prioridad] + [2 bytes de Longitud] + [Mensaje].
+Modifique el código para que al enviar un mensaje por teclado, este se envíe siempre con Prioridad 5.
+Al recibir el mensaje, el formato de impresión debe ser ahora: 
+[segundos.microsegundos] <MAC>: P[Prioridad] - <mensaje>"
+
+
+====================================================================
+MODIFICACIÓN 1: Función de envío (sendEthMsg)
+Archivo: ethmsg.py
+====================================================================
+
+--- CÓDIGO ORIGINAL ---
+def sendEthMsg(message) -> int:
+    # ... (código previo) ...
+    longitud = len(message)
+    
+    # Empaquetamos solo la longitud en 2 bytes (!H)
+    cabecera_longitud = struct.pack('!H', longitud)
+    payload = cabecera_longitud + message
+    
+    ret = sendEthernetFrame(payload, len(payload), ETHTYPE, broadcast)
+    # ...
+
+
+--- CÓDIGO NUEVO PARA EL EXAMEN ---
+def sendEthMsg(message) -> int:
+    # ... (código previo) ...
+    longitud = len(message)
+    prioridad = 5 # El enunciado exige que sea siempre 5
+    
+    # Empaquetamos la prioridad (1 byte -> 'B') y la longitud (2 bytes -> 'H')
+    # Orden de red: '!BH'
+    cabecera = struct.pack('!BH', prioridad, longitud)
+    
+    # Ensamblamos el nuevo payload
+    payload = cabecera + message
+    
+    ret = sendEthernetFrame(payload, len(payload), ETHTYPE, broadcast)
+    # ...
+
+
+
+====================================================================
+MODIFICACIÓN 2: Función de recepción (process_ethMsg_frame)
+Archivo: ethmsg.py
+====================================================================
+
+--- CÓDIGO ORIGINAL ---
+def process_ethMsg_frame(us:ctypes.c_void_p, header:pcap_pkthdr, data:bytes, srcMac:bytes) -> None:
+    if len(data) < 2:
+        return
+        
+    longitud = struct.unpack('!H', data[0:2])[0]
+    texto_bytes = data[2:2+longitud]
+    
+    # ... (decodificación del texto y formato de MAC) ...
+    
+    print(f"[{segundos}.{microsegundos}] {mac_origen_str}: {texto_legible}")
+
+
+--- CÓDIGO NUEVO PARA EL EXAMEN ---
+def process_ethMsg_frame(us:ctypes.c_void_p, header:pcap_pkthdr, data:bytes, srcMac:bytes) -> None:
+    # 1. Ajustar el tamaño mínimo (1 byte prioridad + 2 bytes longitud = 3 bytes)
+    if len(data) < 3:
+        return
+        
+    # 2. Extraer Prioridad y Longitud a la vez
+    # unpack devuelve una tupla con dos valores gracias al formato '!BH'
+    prioridad, longitud = struct.unpack('!BH', data[0:3])
+    
+    # 3. Extraer el texto desplazando el índice (empieza en el byte 3)
+    texto_bytes = data[3:3+longitud]
+    
+    # ... (decodificación del texto y formato de MAC igual que antes) ...
+    
+    # 4. Cambiar el print para incluir la 'P' y la variable prioridad
+    print(f"[{segundos}.{microsegundos}] {mac_origen_str}: P{prioridad} - {texto_legible}")

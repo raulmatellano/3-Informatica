@@ -1,0 +1,56 @@
+====================================================================
+SIMULACRO DE EXAMEN 1 - CORTAFUEGOS DE CAPA DE ENLACE (MAC FILTER)
+====================================================================
+
+--- ENUNCIADO DEL PROFESOR ---
+"Hemos detectado a un atacante en la red local. Para proteger su máquina, implemente 
+un cortafuegos a nivel físico.
+Modifique el archivo correspondiente para que su tarjeta de red ignore (descarte 
+silenciosamente) absolutamente todas las tramas que provengan de la 
+dirección MAC '00:11:22:33:44:55', independientemente de si son ARP o EthMsg."
+
+====================================================================
+RESOLUCIÓN: Modificación en process_Ethernet_frame (ethernet.py)
+====================================================================
+Explicación: El lugar correcto para bloquear tráfico a nivel físico antes de 
+que llegue a ARP o EthMsg es el "conserje", es decir, la capa Ethernet.
+
+--- CÓDIGO ORIGINAL ---
+def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> None:
+    if len(data) < 14:
+        return
+
+    dstMac = data[0:6]
+    srcMac = data[6:12]
+    ethertype = struct.unpack('!H', data[12:14])[0]
+    
+    payload = data[14:]
+
+    if dstMac != macAddress and dstMac != broadcastAddr:
+        return
+        
+    # ... (entrega al protocolo superior) ...
+
+
+--- CÓDIGO NUEVO PARA EL EXAMEN ---
+def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> None:
+    if len(data) < 14:
+        return
+
+    dstMac = data[0:6]
+    srcMac = data[6:12]
+    ethertype = struct.unpack('!H', data[12:14])[0]
+    
+    payload = data[14:]
+
+    # [NUEVO] Definimos la MAC bloqueada en bytes
+    mac_atacante = bytes([0x00, 0x11, 0x22, 0x33, 0x44, 0x55])
+    
+    # [NUEVO] Filtro: Si la MAC de origen es la del atacante, la tiramos a la basura
+    if srcMac == mac_atacante:
+        return
+
+    if dstMac != macAddress and dstMac != broadcastAddr:
+        return
+        
+    # ... (entrega al protocolo superior) ...

@@ -1,0 +1,56 @@
+====================================================================
+SIMULACRO DE EXAMEN 2 - MENSAJERÍA PRIVADA (UNICAST)
+====================================================================
+
+--- ENUNCIADO DEL PROFESOR ---
+"El protocolo EthMsg actual siempre envía los mensajes en Broadcast (a todos).
+Añada un nuevo comando en la consola que se active con la letra 'u' (Unicast) para
+enviar un mensaje privado a una MAC específica.
+Formato del comando: u 00:11:22:33:44:55 Mensaje secreto
+Modifique la función de envío de EthMsg para que acepte una MAC de destino y envíe 
+la trama únicamente a esa dirección física, en lugar de usar Broadcast."
+
+====================================================================
+MODIFICACIÓN 1: Modificar la función de envío (ethmsg.py)
+====================================================================
+Explicación: Cambiamos la firma de la función para que reciba la MAC destino. 
+Le ponemos un valor por defecto (broadcast) para no romper el comando 'm' original.
+
+--- CÓDIGO ORIGINAL ---
+def sendEthMsg(message) -> bytes:
+    # ...
+    payload = cabecera_longitud + message
+    ret = sendEthernetFrame(payload, len(payload), ETHTYPE, broadcast)
+    # ...
+
+--- CÓDIGO NUEVO ---
+def sendEthMsg(message, dst_mac=broadcast) -> bytes:
+    # ... (preparar message a bytes y calcular cabecera) ...
+    payload = cabecera_longitud + message
+    
+    # Cambiamos 'broadcast' por 'dst_mac'
+    ret = sendEthernetFrame(payload, len(payload), ETHTYPE, dst_mac)
+    # ...
+
+
+====================================================================
+MODIFICACIÓN 2: Menú principal (practica2.py)
+====================================================================
+Explicación: Añadir el caso 'u', extraer la MAC del string introducido por 
+el usuario, convertirla a bytes y llamar a la función.
+
+--- CÓDIGO NUEVO (Pegar debajo del bloque elif de la 'm') ---
+        elif comando.startswith("u "):
+            # Ejemplo: "u 00:11:22:33:44:55 Hola Jorge"
+            partes = comando.split(" ")
+            mac_str = partes[1] # "00:11:22:33:44:55"
+            mensaje = " ".join(partes[2:])
+            
+            try:
+                # Convertimos el string de la MAC a un array de 6 bytes
+                mac_bytes = bytes.fromhex(mac_str.replace(':', ''))
+                
+                print(f"Enviando mensaje UNICAST a {mac_str}: {mensaje}")
+                sendEthMsg(mensaje, dst_mac=mac_bytes)
+            except ValueError:
+                print("Error: El formato de la dirección MAC no es válido.")

@@ -1,0 +1,57 @@
+PRACTICA 2: ETHERNET Y ARP
+Redes de Comunicaciones I - EPS UAM
+
+AUTORES:
+- Raul Matellano
+- Jorge Palomino
+Pareja: 4
+Grupo: 1322
+
+
+COMENTARIOS AL PROFESOR:
+Hemos hecho todas las partes de la práctica (Ethernet, los mensajes de texto con EthMsg y la parte de ARP y ARP gratuito).
+
+Para probarlo hemos usado Mininet abriendo dos terminales con dos máquinas (h1 y h2) y hemos usado Wireshark para ver que los paquetes se enviaban bien, con el tipo de protocolo correcto y con los 60 bytes mínimos que pide Ethernet (poniendo ceros de relleno si hacía falta).
+
+Para que el hilo que se queda escuchando paquetes con pcap_loop y el programa que lee del teclado no se pisen las variables a la vez hemos usado Locks. La caché de ARP la hemos hecho con la librería ExpiringDict para que se borren las entradas solas a los 10 segundos.
+
+Entregamos solo los archivos que se pedían: practica2.py, ethernet.py, ethmsg.py, arp.py, rc1_pcap.py y este leeme.txt.
+
+
+CRITERIOS DE EVALUACION:
+
+1. Fichero leeme.txt bien explicado
+- Estado: Realizado
+- Validacion: Hemos escrito este archivo con nuestros nombres, la pareja y explicando de forma sencilla cómo hemos probado cada punto.
+
+2. Recibir tramas Ethernet, realizar comprobaciones y llamar correctamente a la función de callback de nivel superior
+- Estado: Realizado
+- Validacion: En process_Ethernet_frame() miramos si el paquete va dirigido a nuestra MAC o si va a broadcast (FF:FF:FF:FF:FF:FF). Si no es para nosotros lo tiramos. Si es para nosotros, miramos el Ethertype y llamamos a la función que toca (ARP o EthMsg) pasándole solo los datos útiles, sin los 14 bytes de la cabecera Ethernet. Lo hemos probado mandando cosas entre h1 y h2 en Mininet y comprobando que llegaban.
+
+3. Enviar tramas Ethernet correctamente
+- Estado: Realizado
+- Validacion: En sendEthernetFrame() juntamos la MAC destino, nuestra MAC, el Ethertype y los datos. Si el paquete ocupa menos de 60 bytes, le metemos ceros al final hasta llegar a 60, y si mide más de 1514 da error. Luego lo mandamos con pcap_inject. Lo hemos mirado con Wireshark en Mininet y se ve que todos los paquetes que salen tienen al menos 60 bytes.
+
+4. Imprimir mensajes sobre el protocolo 0x0AA0
+- Estado: Realizado
+- Validacion: En initEthMsg() asociamos el Ethertype 0x0AA0 con la función de recibir mensajes. Cuando llega uno, leemos los dos primeros bytes para saber la longitud y luego sacamos el texto. Cogemos la hora y los microsegundos del paquete y lo imprimimos todo por pantalla con el formato que pedía el enunciado: la fecha, la hora, la MAC, el tamaño y el mensaje. Lo hemos probado escribiendo con la opción 'm' desde h1 y viendo que salía bien en h2.
+
+5. Enviar correctamente peticiones ARP
+- Estado: Realizado
+- Validacion: En createARPRequest() montamos el paquete ARP para preguntar por una IP (con opcode 1, nuestra IP y MAC, y la MAC destino a ceros). En ARPResolution() lo mandamos a broadcast (FF:FF:FF:FF:FF:FF) con Ethertype 0x0806. Si nadie contesta, vuelve a probar hasta 3 veces esperando 1 segundo cada vez. Lo hemos probado poniendo 'a <IP>' en la consola y viendo en Wireshark cómo salía la pregunta.
+
+6. Procesar correctamente peticiones ARP recibidas
+- Estado: Realizado
+- Validacion: En process_arp_frame() miramos que la cabecera ARP esté bien y en processARPRequest() comprobamos que la MAC que viene dentro del ARP coincida con la MAC de la trama de Ethernet. Si la IP por la que preguntan es la nuestra, preparamos la respuesta con createARPReply() y la mandamos. Lo hemos probado preguntando desde h1 por la IP de h2 y viendo que h2 responde.
+
+7. Enviar correctamente respuestas ARP
+- Estado: Realizado
+- Validacion: En createARPReply() montamos el paquete de respuesta (opcode 2) con nuestra IP y MAC, y lo mandamos solo a la MAC de la máquina que nos había preguntado. Lo hemos comprobado con Wireshark viendo que el paquete de respuesta va directo a esa MAC y con los 60 bytes de tamaño.
+
+8. Procesar correctamente respuestas ARP
+- Estado: Realizado
+- Validacion: En processARPReply() miramos que la respuesta sea para nosotros y que la IP que nos contesta sea justo la que habíamos pedido. Guardamos la MAC que nos han dicho, guardamos la pareja IP-MAC en la caché, avisamos a ARPResolution() para que deje de esperar y todo esto con un Lock para que no haya problemas de hilos. Lo hemos probado viendo que al poner 'a <IP>' nos sale la MAC por la pantalla.
+
+9. Manejo correcto de la caché ARP
+- Estado: Realizado
+- Validacion: Usamos ExpiringDict puesto a 10 segundos. Cuando hacemos una resolución, primero miramos si ya tenemos esa IP en la caché para no tener que mandar nada a la red (lo comprobamos con Wireshark viendo que la segunda vez que pides la misma IP no sale ningún paquete). Con la letra 'p' vemos que la tabla se muestra bien por pantalla, y si esperamos más de 10 segundos y volvemos a dar a la 'p', la entrada ya se ha borrado sola.

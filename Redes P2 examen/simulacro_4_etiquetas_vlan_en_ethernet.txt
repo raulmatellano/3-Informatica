@@ -1,0 +1,54 @@
+====================================================================
+SIMULACRO DE EXAMEN 4 - AÑADIR ETIQUETA VLAN (802.1Q) EN ETHERNET
+====================================================================
+
+--- ENUNCIADO DEL PROFESOR ---
+"Nuestra red ahora está segmentada en redes virtuales (VLANs). 
+Debe modificar el Nivel Ethernet (ethernet.py) para que todas las tramas salientes 
+incluyan la cabecera VLAN con el identificador de red (VLAN ID) 10.
+La cabecera VLAN se inserta entre la MAC origen y el Ethertype real.
+Ocupa 4 bytes: 2 bytes fijos con el valor 0x8100 y 2 bytes con el VLAN ID (10).
+Al recibir tramas, su código Ethernet debe ser capaz de detectar si llevan la etiqueta 
+0x8100, extraerla, y saltar esos 4 bytes extra para encontrar el Ethertype real y el payload."
+
+====================================================================
+MODIFICACIÓN 1: Función de envío (sendEthernetFrame)
+====================================================================
+Explicación: La cabecera Ethernet pasará de medir 14 bytes a 18 bytes.
+
+--- CÓDIGO ORIGINAL ---
+    header = dstMac + macAddress + struct.pack('!H', etherType)
+    frame = header + data
+
+--- CÓDIGO NUEVO ---
+    # 0x8100 es el indicador estándar mundial de que viene una VLAN
+    # 10 es nuestro VLAN ID. etherType es el original (ej: ARP o EthMsg)
+    # Empaquetamos TRES Unsigned Shorts ('!HHH') -> 2 + 2 + 2 = 6 bytes extra tras las MACs
+    
+    header = dstMac + macAddress + struct.pack('!HHH', 0x8100, 10, etherType)
+    frame = header + data
+
+
+====================================================================
+MODIFICACIÓN 2: Función de recepción (process_Ethernet_frame)
+====================================================================
+Explicación: Tenemos que comprobar dinámicamente si el paquete trae 14 o 18 bytes de cabecera.
+
+--- CÓDIGO ORIGINAL ---
+    ethertype = struct.unpack('!H', data[12:14])[0]
+    payload = data[14:]
+
+--- CÓDIGO NUEVO ---
+    # Leemos lo que hay en la posición del Ethertype normal
+    ethertype_o_vlan = struct.unpack('!H', data[12:14])[0]
+    
+    if ethertype_o_vlan == 0x8100:
+        # ¡TRAE VLAN! El Ethertype real está desplazado 4 bytes a la derecha
+        vlan_id = struct.unpack('!H', data[14:16])[0]
+        ethertype = struct.unpack('!H', data[16:18])[0]
+        # El payload ahora empieza en el byte 18
+        payload = data[18:]
+    else:
+        # NO trae VLAN. Es una trama Ethernet normal de 14 bytes
+        ethertype = ethertype_o_vlan
+        payload = data[14:]
