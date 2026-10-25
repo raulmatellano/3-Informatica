@@ -1,7 +1,7 @@
 '''
     ethmsg.py
     Implementación del protocolo de mensajeria basica para emision de mensajes en tiempo real sobre ethernet.
-    Autor: Manuel Ruiz <manuel.ruiz.fernandez@uam.es>
+    Autor: Jorge Palomino y Raul Matellano
     2024 EPS-UAM
 '''
 
