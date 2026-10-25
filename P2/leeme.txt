@@ -12,7 +12,7 @@ leeme.txt
 Comentarios al profesor: Ninguno. Se entregan únicamente los archivos solicitados en el enunciado y la práctica ha sido implementada y validada en su totalidad.
 
 
-Fichero leeme.txt bien explicado: Realizado. Se detallan los autores, los archivos entregados y la validación concisa de cada criterio de evaluación conforme al enunciado.
+Fichero leeme.txt bien explicado: Realizado. Se detallan los autores, los archivos entregados y la validación de cada criterio de evaluación conforme al enunciado.
 Recibir tramas Ethernet, realizar comprobaciones y llamar correctamente a la función de callback de nivel superior: Realizado. Se comprobó en Mininet enviando tráfico entre hosts; se descartan tramas ajenas, se aceptan dirigidas a la MAC propia o broadcast, y se deriva únicamente el payload útil al callback según el Ethertype.
 Enviar tramas Ethernet correctamente: Realizado. Se verificó con Wireshark que las tramas enviadas con pcap_inject incluyen cabecera correcta (MAC destino, origen y Ethertype), aplicando padding de ceros para alcanzar los 60 bytes mínimos y controlando el máximo de 1514 bytes.
 Imprimir mensajes sobre el protocolo 0x0AA0: Realizado. Se validó enviando mensajes con la opción 'm' entre hosts en Mininet; el receptor procesa la trama e imprime la marca temporal con microsegundos, MAC origen, tamaño y texto según el formato especificado.
