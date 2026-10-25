@@ -1,7 +1,7 @@
 '''
     ethmsg.py
     Implementación del protocolo de mensajeria basica para emision de mensajes en tiempo real sobre ethernet.
-    Autor: Manuel Ruiz <manuel.ruiz.fernandez@uam.es>
+    Autor: Jorge Palomino y Raul Matellano
     2024 EPS-UAM
 '''
 
@@ -16,7 +16,7 @@ from expiringdict import ExpiringDict
 import datetime
 
 
-ETHTYPE = 0x3003
+ETHTYPE = 0x0AA0
 #Dirección de difusión (Broadcast)
 broadcast = bytes([0xFF]*6)
 

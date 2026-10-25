@@ -1,7 +1,7 @@
 '''
     ethernet.py
     Implementación del nivel Ethernet y funciones auxiliares para el envío y recepción de tramas Ethernet
-    Autor: Javier Ramos <javier.ramos@uam.es>
+    Autor: Jorge Palomino y Raul Matellano
     2019 EPS-UAM
 '''
 

@@ -1,7 +1,7 @@
 '''
 	practica2.py
 	Programa principal que ejecuta resoluciones ARP. En este archivo No implementaremos nada.
-	Autor: Javier Ramos <javier.ramos@uam.es> / Manuel Ruiz <manuel.ruiz.fernandez@uam.es >
+	Autor: Jorge Palomino y Raul Matellano
 	2020 EPS-UAM
 '''
 

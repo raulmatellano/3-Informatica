@@ -92,11 +92,16 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
     
     global myIP
     target_ip = struct.unpack('!I', data[24:28])[0]
+    
     if target_ip == myIP:
         sender_mac = data[8:14] 
+        
+        if sender_mac != MAC:
+            return
+            
         sender_ip = struct.unpack('!I', data[14:18])[0]  
         respuesta = createARPReply(sender_ip, sender_mac) 
-        sendEthernetFrame(respuesta, len(respuesta), 0x0806, sender_mac) 
+        sendEthernetFrame(respuesta, len(respuesta), 0x0806, sender_mac)
    
    
 def processARPReply(data:bytes,MAC:bytes)->None:
@@ -213,7 +218,8 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
             -srcMac: MAC origen de la trama Ethernet que se ha recibido
         Retorno: Ninguno
     '''
-    
+    if len(data) < 28 or data[0:ARP_HLEN] != ARPHeader:
+        return
     opcode = struct.unpack('!H', data[6:8])[0]
     if opcode == 1:
         processARPRequest(data, srcMac)
@@ -290,3 +296,4 @@ def ARPResolution(ip:int) -> bytes:
         awaitingResponse = False
         
     return None
+
