@@ -124,6 +124,79 @@ class TestMinimize(ABC, unittest.TestCase):
         simplified = AutomataFormat.read(simplified_str).to_deterministic()
 
         self._check_minimize(automaton, simplified)
+        
+    def test_estados_finales_equivalentes(self):
+        """Test de reduccion de estados finales equivalentes."""
+        automaton_str = """
+        Automaton:
+            Symbols: ab
+            q0
+            q1 final
+            q2 final
+            empty
+            
+            ini q0 -a-> q1
+            q0 -b-> q2
+            q1 -a-> q1
+            q1 -b-> empty
+            q2 -a-> q2
+            q2 -b-> empty
+            empty -a-> empty
+            empty -b-> empty
+        """
+        automaton = AutomataFormat.read(automaton_str)
+        
+        simplified_str = """
+        Automaton:
+            Symbols: ab
+            m0
+            m1 final
+            empty
+            
+            ini m0 -a-> m1
+            m0 -b-> m1
+            m1 -a-> m1
+            m1 -b-> empty
+            empty -a-> empty
+            empty -b-> empty
+        """
+        simplified = AutomataFormat.read(simplified_str).to_deterministic()
+        self._check_minimize(automaton, simplified)
+
+    def test_estados_inaccesibles_aislados(self):
+        """Test de eliminacion de estados inaccesibles."""
+        automaton_str = """
+        Automaton:
+            Symbols: 0
+            q0
+            q1
+            q2 final
+            q_inacc
+            empty
+            
+            ini q0 -0-> q1
+            q1 -0-> q2
+            q2 -0-> empty
+            q_inacc -0-> q2
+            empty -0-> empty
+        """
+        automaton = AutomataFormat.read(automaton_str)
+        
+        simplified_str = """
+        Automaton:
+            Symbols: 0
+            q0
+            q1
+            q2 final
+            empty
+            
+            ini q0 -0-> q1
+            q1 -0-> q2
+            q2 -0-> empty
+            empty -0-> empty
+        """
+        simplified = AutomataFormat.read(simplified_str).to_deterministic()
+        self._check_minimize(automaton, simplified)
 
 
 if __name__ == '__main__':

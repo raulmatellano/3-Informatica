@@ -156,9 +156,9 @@ class REParser():
         
         aut.add_transition(new_ini, None, automaton.initial_state)
         
-        for vieja_meta in automaton.final_states:
-            aut.add_transition(vieja_meta, None, new_fin)
-            aut.add_transition(vieja_meta, None, automaton.initial_state)
+        for estado_final in automaton.final_states:
+            aut.add_transition(estado_final, None, new_fin)
+            aut.add_transition(estado_final, None, automaton.initial_state)
             
         return aut
 
@@ -208,11 +208,11 @@ class REParser():
         aut.add_transition(new_ini, None, automaton1.initial_state)
         aut.add_transition(new_ini, None, automaton2.initial_state)
         
-        for vieja_meta in automaton1.final_states:
-            aut.add_transition(vieja_meta, None, new_fin)
+        for estado_final in automaton1.final_states:
+            aut.add_transition(estado_final, None, new_fin)
             
-        for vieja_meta in automaton2.final_states:
-            aut.add_transition(vieja_meta, None, new_fin)           
+        for estado_final in automaton2.final_states:
+            aut.add_transition(estado_final, None, new_fin)           
         return aut
 
     def _create_automaton_concat(self, automaton1, automaton2):
@@ -249,8 +249,8 @@ class REParser():
             transitions=nuevas_transiciones,
             final_states=set(automaton2.final_states)
         )
-        for vieja_meta in automaton1.final_states:
-            aut.add_transition(vieja_meta, None, automaton2.initial_state)
+        for estado_final in automaton1.final_states:
+            aut.add_transition(estado_final, None, automaton2.initial_state)
             
         return aut
     
