@@ -81,6 +81,28 @@ class TestREParser(unittest.TestCase):
         self._check_accept(evaluator, ",13", should_accept=False)
         self._check_accept(evaluator, "13,", should_accept=True)
         self._check_accept(evaluator, "3,7,12", should_accept=False)
+        
+    def test1(self):
+        """Test para evaluar la composición del operador de unión y el operador de concatenación. Expresión regular: (a+b).c"""  
+        evaluator = self._create_evaluator("(a+b).c")     
+        evaluator.draw(filename="test1", view=False)
+        self._check_accept(evaluator, "ac", should_accept=True)
+        self._check_accept(evaluator, "bc", should_accept=True)
+        self._check_accept(evaluator, "a", should_accept=False)
+        self._check_accept(evaluator, "c", should_accept=False)
+        self._check_accept(evaluator, "abc", should_accept=False)
+        self._check_accept(evaluator, "", should_accept=False)
+
+    def test2(self):
+        """Test para evaluar el * aplicado sobre una subexpresión concatenada. Expresión regular: (a.b)*"""        
+        evaluator = self._create_evaluator("(a.b)*")
+        evaluator.draw(filename="test2", view=False)
+        self._check_accept(evaluator, "", should_accept=True)
+        self._check_accept(evaluator, "ab", should_accept=True)
+        self._check_accept(evaluator, "abab", should_accept=True)
+        self._check_accept(evaluator, "a", should_accept=False)
+        self._check_accept(evaluator, "aba", should_accept=False)
+        self._check_accept(evaluator, "ba", should_accept=False)
 
 
 if __name__ == "__main__":

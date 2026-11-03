@@ -142,6 +142,57 @@ class TestEvaluatorNumber(TestEvaluatorBase):
         self._check_accept("0.0.0", should_accept=False)
         self._check_accept("0-0.0", should_accept=False)
 
+class TestExtra1(TestEvaluatorBase):
+    """Prueba de un bucle simple (ab)*"""
+
+    def _create_automata(self):
+        description = """
+        Automaton:
+            Symbols: ab
+            q0 final
+            q1
+            ini q0 -a-> q1
+            q1 -b-> q0
+        """
+        return AutomataFormat.read(description)
+
+    def test_bucle(self):
+        self._check_accept("", should_accept=True)      
+        self._check_accept("ab", should_accept=True)    
+        self._check_accept("abab", should_accept=True)  
+        self._check_accept("a", should_accept=False)    
+        self._check_accept("aba", should_accept=False)  
+        self._check_accept("bb", should_accept=False)   
+
+
+class TestExtra2(TestEvaluatorBase):
+    """Prueba de números binarios pares"""
+
+    def _create_automata(self):
+        description = """
+        Automaton:
+            Symbols: 01
+            start
+            even final
+            odd
+            ini start -0-> even
+            start -1-> odd
+            even -0-> even
+            even -1-> odd
+            odd -0-> even
+            odd -1-> odd
+        """
+        return AutomataFormat.read(description)
+
+    def test_pares(self):
+        self._check_accept("0", should_accept=True)     
+        self._check_accept("10", should_accept=True)    
+        self._check_accept("1100", should_accept=True)  
+        self._check_accept("1", should_accept=False)    
+        self._check_accept("101", should_accept=False)  
+        self._check_accept("", should_accept=False)
 
 if __name__ == '__main__':
     unittest.main()
+    
+
