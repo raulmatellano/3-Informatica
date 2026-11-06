@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Jupyter Checkpoints
+.ipynb_checkpoints/
+
+# Archivos del sistema
+.DS_Store
+
+# Borradores no entregables
+BORRADOR_MEMORIA.md
+*borrador*
+*Borrador*
