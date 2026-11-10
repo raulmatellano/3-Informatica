@@ -1,4 +1,4 @@
-Práctica 2: Análisis Exploratorio de Datos y Preprocesamiento
+Práctica 2: Análisis exploratorio de datos y preprocesamiento
 
 Autores: Raúl Matellano de la Morena, Jorge Palomino Rodríguez
 Grupo: 1321 04
