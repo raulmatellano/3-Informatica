@@ -1,258 +1,208 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from pymongo import ReturnDocument
-from pymongo.errors import DuplicateKeyError
 from quart import Blueprint, jsonify, request
 from .mongodb_client import books_collection
 
-library_bp = Blueprint("library", __name__, url_prefix="/library")
+library = Blueprint("library", __name__)
 
 
-def obtener_usuario_autenticado():
-    user_id = request.headers.get("X-User-Id", "").strip()
-    if user_id == "":
-        return None
-    return user_id
-
-
-def formatear_fecha(fecha):
-    if isinstance(fecha, datetime):
-        return fecha.isoformat().replace("+00:00", "Z")
-    return fecha
-
-
-def serializar_libro(documento, filtrar_usuario=None):
-    historial_serializado = []
-
-    for prestamo in documento.get("loan_history", []):
-        if filtrar_usuario is not None and prestamo.get("user_id") != filtrar_usuario:
-            continue
-
-        historial_serializado.append(
-            {
-                "user_id": prestamo.get("user_id"),
-                "loan_date": formatear_fecha(prestamo.get("loan_date")),
-                "return_date": formatear_fecha(prestamo.get("return_date")),
-            }
-        )
-
-    return {
-        "isbn": documento["isbn"],
-        "title": documento["title"],
-        "author": documento["author"],
-        "year": documento["year"],
-        "publisher": documento["publisher"],
-        "available_stock": documento["available_stock"],
-        "loan_history": historial_serializado,
-    }
-
-
-def validar_datos_libro(datos):
-    if not isinstance(datos, dict):
-        return False, "El cuerpo de la peticion debe ser un objeto JSON"
-
-    campos_texto = ["isbn", "title", "author", "publisher"]
-    for campo in campos_texto:
-        valor = datos.get(campo)
-        if not isinstance(valor, str) or valor.strip() == "":
-            return False, f"El campo '{campo}' es obligatorio y debe ser texto no vacio"
-
-    year = datos.get("year")
-    if not isinstance(year, int) or isinstance(year, bool):
-        return False, "El campo 'year' debe ser un numero entero"
-
-    stock = datos.get("available_stock")
-    if not isinstance(stock, int) or isinstance(stock, bool) or stock < 0:
-        return False, "El campo 'available_stock' debe ser un entero mayor o igual que 0"
-
-    return True, None
-
-
-@library_bp.post("/books")
+# Alta de un nuevo libro en la biblioteca
+@library.route("/library/books", methods=["POST"])
 async def create_book():
-    user_id = obtener_usuario_autenticado()
-    if user_id is None:
-        return jsonify({"error": "Usuario no autenticado"}), 401
+    # Leemos los datos JSON enviados por el cliente
+    data = await request.get_json()
+    if not data:
+        return jsonify({"error": "Cuerpo JSON invalido o vacio"}), 400
 
-    datos = await request.get_json(silent=True)
-    valido, mensaje_error = validar_datos_libro(datos)
-    if not valido:
-        return jsonify({"error": mensaje_error}), 400
+    isbn = data.get("isbn")
+    title = data.get("title")
+    author = data.get("author")
+    year = data.get("year")
+    publisher = data.get("publisher")
+    available_stock = data.get("available_stock")
 
-    nuevo_libro = {
-        "isbn": datos["isbn"].strip(),
-        "title": datos["title"].strip(),
-        "author": datos["author"].strip(),
-        "year": datos["year"],
-        "publisher": datos["publisher"].strip(),
-        "available_stock": datos["available_stock"],
-        "loan_history": [],
-    }
+    # Comprobamos year y available_stock con "is None" porque un stock de 0 es valido
+    if not isbn or not title or not author or not publisher or year is None or available_stock is None:
+        return jsonify({"error": "Faltan campos obligatorios del libro"}), 400
 
-    try:
-        await books_collection.insert_one(nuevo_libro)
-    except DuplicateKeyError:
+    if available_stock < 0:
+        return jsonify({"error": "available_stock no puede ser negativo"}), 400
+
+    # Verificamos que no exista otro libro con el mismo ISBN
+    existing = await books_collection.find_one({"isbn": isbn})
+    if existing:
         return jsonify({"error": "Ya existe un libro con ese ISBN"}), 409
 
-    return jsonify(serializar_libro(nuevo_libro)), 201
-
-
-@library_bp.get("/books/out-of-stock")
-async def get_out_of_stock_books():
-    user_id = obtener_usuario_autenticado()
-    if user_id is None:
-        return jsonify({"error": "Usuario no autenticado"}), 401
-
-    cursor = books_collection.find({"available_stock": {"$lte": 0}})
-    libros_sin_stock = []
-
-    async for documento in cursor:
-        libros_sin_stock.append(serializar_libro(documento))
-
-    return jsonify(libros_sin_stock), 200
-
-
-@library_bp.get("/books/<isbn>")
-async def get_book(isbn):
-    user_id = obtener_usuario_autenticado()
-    if user_id is None:
-        return jsonify({"error": "Usuario no autenticado"}), 401
-
-    documento = await books_collection.find_one({"isbn": isbn})
-    if documento is None:
-        return jsonify({"error": "Libro no encontrado"}), 404
-
-    return jsonify(serializar_libro(documento)), 200
-
-
-@library_bp.delete("/books/<isbn>")
-async def delete_book(isbn):
-    user_id = obtener_usuario_autenticado()
-    if user_id is None:
-        return jsonify({"error": "Usuario no autenticado"}), 401
-
-    resultado = await books_collection.delete_one(
-        {
-            "isbn": isbn,
-            "loan_history": {
-                "$not": {
-                    "$elemMatch": {"return_date": None}
-                }
-            },
-        }
-    )
-
-    if resultado.deleted_count == 1:
-        return jsonify({"message": "Libro eliminado correctamente"}), 200
-
-    existe = await books_collection.find_one({"isbn": isbn}, {"_id": 1})
-    if existe is not None:
-        return jsonify({"error": "No se puede borrar un libro con prestamos activos"}), 409
-
-    return jsonify({"error": "Libro no encontrado"}), 404
-
-
-@library_bp.post("/books/<isbn>/borrow")
-async def borrow_book(isbn):
-    user_id = obtener_usuario_autenticado()
-    if user_id is None:
-        return jsonify({"error": "Usuario no autenticado"}), 401
-
-    ahora_utc = datetime.now(timezone.utc)
-    nuevo_prestamo = {
-        "user_id": user_id,
-        "loan_date": ahora_utc,
-        "return_date": None,
+    # Construimos el documento del libro con el historial de prestamos vacio
+    new_book = {
+        "isbn": isbn,
+        "title": title,
+        "author": author,
+        "year": year,
+        "publisher": publisher,
+        "available_stock": available_stock,
+        "loan_history": []
     }
 
-    libro_actualizado = await books_collection.find_one_and_update(
+    await books_collection.insert_one(new_book)
+    # Quitamos _id porque ObjectId no se puede convertir directamente a JSON
+    new_book.pop("_id", None)
+
+    return jsonify(new_book), 201
+
+
+# Listado de libros cuyo stock disponible es 0
+@library.route("/library/books/out-of-stock", methods=["GET"])
+async def get_out_of_stock_books():
+    cursor = books_collection.find({"available_stock": 0}, {"_id": 0})
+    books = await cursor.to_list(length=None)
+    return jsonify(books), 200
+
+
+# Consulta de un libro concreto por su ISBN
+@library.route("/library/books/<isbn>", methods=["GET"])
+async def get_book(isbn):
+    book = await books_collection.find_one({"isbn": isbn}, {"_id": 0})
+    if not book:
+        return jsonify({"error": "Libro no encontrado"}), 404
+
+    return jsonify(book), 200
+
+
+# Borrado de un libro si no tiene prestamos activos
+@library.route("/library/books/<isbn>", methods=["DELETE"])
+async def delete_book(isbn):
+    book = await books_collection.find_one({"isbn": isbn}, {"_id": 0})
+    if not book:
+        return jsonify({"error": "Libro no encontrado"}), 404
+
+    # Recorremos el historial para comprobar si queda algun prestamo sin devolver
+    has_active_loans = False
+    for loan in book.get("loan_history", []):
+        if loan.get("return_date") is None:
+            has_active_loans = True
+            break
+
+    if has_active_loans:
+        return jsonify({"error": "No se puede borrar un libro con prestamos activos"}), 409
+
+    # Eliminamos el libro de la coleccion
+    await books_collection.delete_one({"isbn": isbn})
+    return jsonify({"message": "Libro eliminado correctamente"}), 200
+
+
+# Prestamo de un libro para el usuario autenticado
+@library.route("/library/books/<isbn>/borrow", methods=["POST"])
+async def borrow_book(isbn):
+    # Obtenemos el usuario desde la cabecera que inyecta Nginx
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        return jsonify({"error": "Cabecera X-User-Id no proporcionada"}), 401
+
+    now = datetime.now().isoformat()
+
+    # Restamos stock y añadimos el prestamo de forma atomica para evitar condiciones de carrera
+    updated_book = await books_collection.find_one_and_update(
         {
             "isbn": isbn,
-            "available_stock": {"$gt": 0},
+            "available_stock": {"$gt": 0}
         },
         {
             "$inc": {"available_stock": -1},
-            "$push": {"loan_history": nuevo_prestamo},
+            "$push": {
+                "loan_history": {
+                    "user_id": user_id,
+                    "loan_date": now,
+                    "return_date": None
+                }
+            }
         },
-        return_document=ReturnDocument.AFTER,
+        projection={"_id": 0},
+        return_document=ReturnDocument.AFTER
     )
 
-    if libro_actualizado is None:
-        existe = await books_collection.find_one({"isbn": isbn}, {"_id": 1})
-        if existe is not None:
-            return jsonify({"error": "No hay stock disponible para este libro"}), 409
-        return jsonify({"error": "Libro no encontrado"}), 404
+    # Si no se actualizo, comprobamos si es porque no existe el libro o porque no hay stock
+    if not updated_book:
+        existing = await books_collection.find_one({"isbn": isbn})
+        if not existing:
+            return jsonify({"error": "Libro no encontrado"}), 404
+        return jsonify({"error": "No hay stock disponible"}), 409
 
-    return jsonify(serializar_libro(libro_actualizado)), 200
+    return jsonify(updated_book), 200
 
 
-@library_bp.post("/books/<isbn>/return")
+# Devolucion de un libro prestado por el usuario autenticado
+@library.route("/library/books/<isbn>/return", methods=["POST"])
 async def return_book(isbn):
-    user_id = obtener_usuario_autenticado()
-    if user_id is None:
-        return jsonify({"error": "Usuario no autenticado"}), 401
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        return jsonify({"error": "Cabecera X-User-Id no proporcionada"}), 401
 
-    ahora_utc = datetime.now(timezone.utc)
+    now = datetime.now().isoformat()
 
-    libro_actualizado = await books_collection.find_one_and_update(
+    # Buscamos el prestamo activo de este usuario y lo cerramos de forma atomica
+    updated_book = await books_collection.find_one_and_update(
         {
             "isbn": isbn,
             "loan_history": {
                 "$elemMatch": {
                     "user_id": user_id,
-                    "return_date": None,
+                    "return_date": None
                 }
-            },
+            }
         },
         {
             "$inc": {"available_stock": 1},
-            "$set": {"loan_history.$.return_date": ahora_utc},
+            "$set": {"loan_history.$.return_date": now}
         },
-        return_document=ReturnDocument.AFTER,
+        projection={"_id": 0},
+        return_document=ReturnDocument.AFTER
     )
 
-    if libro_actualizado is None:
-        existe = await books_collection.find_one({"isbn": isbn}, {"_id": 1})
-        if existe is None:
+    # Distinguimos entre libro inexistente (404) y usuario sin prestamo activo (409)
+    if not updated_book:
+        existing = await books_collection.find_one({"isbn": isbn})
+        if not existing:
             return jsonify({"error": "Libro no encontrado"}), 404
-        return jsonify({"error": "No tienes ningun prestamo activo de este libro"}), 409
+        return jsonify({"error": "No tienes un prestamo activo de este libro"}), 409
 
-    return jsonify(serializar_libro(libro_actualizado)), 200
+    return jsonify(updated_book), 200
 
 
-@library_bp.get("/loans/active")
+# Listado de libros que el usuario tiene prestados actualmente
+@library.route("/library/loans/active", methods=["GET"])
 async def get_active_loans():
-    user_id = obtener_usuario_autenticado()
-    if user_id is None:
-        return jsonify({"error": "Usuario no autenticado"}), 401
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        return jsonify({"error": "Cabecera X-User-Id no proporcionada"}), 401
 
+    # Filtramos libros donde este usuario tenga un prestamo con return_date a None
     cursor = books_collection.find(
         {
             "loan_history": {
                 "$elemMatch": {
                     "user_id": user_id,
-                    "return_date": None,
+                    "return_date": None
                 }
             }
-        }
+        },
+        {"_id": 0}
     )
-
-    prestamos_activos = []
-    async for documento in cursor:
-        prestamos_activos.append(serializar_libro(documento, filtrar_usuario=user_id))
-
-    return jsonify(prestamos_activos), 200
+    active_books = await cursor.to_list(length=None)
+    return jsonify(active_books), 200
 
 
-@library_bp.get("/loans/history")
-async def get_loans_history():
-    user_id = obtener_usuario_autenticado()
-    if user_id is None:
-        return jsonify({"error": "Usuario no autenticado"}), 401
+# Historico completo de libros prestados al usuario (activos y devueltos)
+@library.route("/library/loans/history", methods=["GET"])
+async def get_loan_history():
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        return jsonify({"error": "Cabecera X-User-Id no proporcionada"}), 401
 
-    cursor = books_collection.find({"loan_history.user_id": user_id})
-
-    historial_usuario = []
-    async for documento in cursor:
-        historial_usuario.append(serializar_libro(documento, filtrar_usuario=user_id))
-
-    return jsonify(historial_usuario), 200
+    # Buscamos todos los libros en cuyo historial aparezca el usuario
+    cursor = books_collection.find(
+        {"loan_history.user_id": user_id},
+        {"_id": 0}
+    )
+    history_books = await cursor.to_list(length=None)
+    return jsonify(history_books), 200
