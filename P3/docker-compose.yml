@@ -29,7 +29,9 @@ services:
       - backend_net
 
   auth-service:
-    build: ./auth-service
+    build:
+      context: ./auth-service
+      network: host
     expose:
       - "5050"
     environment:
@@ -45,7 +47,9 @@ services:
       - backend_net
 
   library-service:
-    build: ./library-service
+    build:
+      context: ./library-service
+      network: host
     expose:
       - "5051"
     environment:
